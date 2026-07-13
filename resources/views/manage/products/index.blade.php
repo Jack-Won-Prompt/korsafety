@@ -28,6 +28,7 @@
                 <td>
                     <div style="display:flex;gap:6px">
                         <a href="{{ route('manage.products.edit', $p) }}" class="btn btn-sm">수정</a>
+                        @if($p->main_image)<a href="{{ route('manage.products.image', $p) }}" class="btn btn-sm" title="이미지 편집">✎</a>@endif
                         <form action="{{ route('manage.products.destroy', $p) }}" method="post" onsubmit="return confirm('삭제하시겠습니까?')">@csrf @method('DELETE')<button class="btn btn-sm btn-danger">삭제</button></form>
                     </div>
                 </td>
