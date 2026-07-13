@@ -1,0 +1,47 @@
+[
+ {
+  "slug": "safety-shoes",
+  "name": "안전화",
+  "count": 766
+ },
+ {
+  "slug": "workwear",
+  "name": "워크웨어",
+  "count": 1062
+ },
+ {
+  "slug": "safety-gear",
+  "name": "안전용품",
+  "count": 785
+ },
+ {
+  "slug": "harness",
+  "name": "안전대·안전벨트",
+  "count": 0
+ },
+ {
+  "slug": "facilities",
+  "name": "안전시설물",
+  "count": 91
+ },
+ {
+  "slug": "road-safety",
+  "name": "도로안전용품",
+  "count": 0
+ },
+ {
+  "slug": "fire-rescue",
+  "name": "소방·구급안전용품",
+  "count": 0
+ },
+ {
+  "slug": "clean-safe",
+  "name": "클린&세이프",
+  "count": 202
+ },
+ {
+  "slug": "seasonal",
+  "name": "시즌상품",
+  "count": 154
+ }
+]

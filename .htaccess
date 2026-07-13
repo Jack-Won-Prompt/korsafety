@@ -1,0 +1,19 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /korsafety/
+
+    # Authorization 헤더 전달 (API 토큰 인증용 — Apache가 기본으로 제거함)
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # 1) Serve real static files that exist in public/ (images, css, js, build)
+    #    Exclude index.php so it is not re-captured by rule 2.
+    RewriteCond %{DOCUMENT_ROOT}/korsafety/public/$1 -f
+    RewriteCond $1 !^index\.php$
+    RewriteRule ^(.*)$ public/$1 [L]
+
+    # 2) Everything else goes to the root Laravel entrypoint (base path = /korsafety)
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
