@@ -9,7 +9,7 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2312151b'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='15' font-weight='900' fill='%23ff5722' text-anchor='middle'%3EKS%3C/text%3E%3C/svg%3E">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
-    <link rel="stylesheet" href="{{ asset('css/shop.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/shop.css') }}?v={{ @filemtime(public_path('css/shop.css')) }}">
 </head>
 <body>
 <div class="topbar">
@@ -127,7 +127,7 @@
     <span class="msg"></span>
 </div>
 
-<script src="{{ asset('js/shop.js') }}"></script>
+<script src="{{ asset('js/shop.js') }}?v={{ @filemtime(public_path('js/shop.js')) }}"></script>
 @stack('scripts')
 </body>
 </html>

@@ -259,8 +259,8 @@ h1,h2,h3,h4 { margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height:
 .list-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 8px 0 24px; border-bottom: 1px solid var(--line); margin-bottom: 26px; flex-wrap: wrap; }
 .list-head h1 { font-size: 30px; }
 .list-head .cnt { color: var(--muted); font-size: 14px; margin-top: 8px; }
-.sortbar { display: flex; gap: 6px; }
-.sortbar a { font-size: 13.5px; font-weight: 600; color: var(--muted); padding: 8px 13px; border-radius: 8px; }
+.sortbar { display: flex; gap: 6px; flex-wrap: wrap; }
+.sortbar a { font-size: 13.5px; font-weight: 600; color: var(--muted); padding: 8px 13px; border-radius: 8px; white-space: nowrap; flex: 0 0 auto; }
 .sortbar a.active { background: var(--ink); color: #fff; }
 .sortbar a:hover:not(.active) { background: var(--bg-soft); color: var(--ink); }
 
