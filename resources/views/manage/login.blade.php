@@ -35,11 +35,11 @@
         </div>
 
         <div class="demo">
-            <b>데모 계정</b><br>
-            본사 관리자 — admin@korsafety.kr / korsafety2013<br>
-            판매점 — delta@partner.kr / seller123<br>
-            협력사 — agent@partner.kr / agent123<br>
-            구매 대행자 — buyer@partner.kr / buyer123
+            <b>데모 계정 (비밀번호 공통: 1234)</b><br>
+            본사 관리자 — admin@korsafety.kr<br>
+            판매점 — delta@partner.kr / workpro@partner.kr<br>
+            협력사 — agent@partner.kr<br>
+            구매 대행자 — buyer@partner.kr
         </div>
     </form>
 </div>

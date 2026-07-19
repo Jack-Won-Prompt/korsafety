@@ -30,7 +30,7 @@ class AgentSeeder extends Seeder
 
         User::updateOrCreate(['email' => 'agent@partner.kr'], [
             'name' => '메디파트너', 'role' => 'agent', 'agent_id' => $agent->id,
-            'password' => Hash::make('agent123'),
+            'password' => Hash::make('1234'),
         ]);
 
         // 거래처 (기업/병원)

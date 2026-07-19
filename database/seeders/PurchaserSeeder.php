@@ -30,7 +30,7 @@ class PurchaserSeeder extends Seeder
 
         User::updateOrCreate(['email' => 'buyer@partner.kr'], [
             'name' => '세이프바이', 'role' => 'purchaser', 'purchaser_id' => $purchaser->id,
-            'password' => Hash::make('buyer123'),
+            'password' => Hash::make('1234'),
         ]);
 
         // 구매자(소매처)

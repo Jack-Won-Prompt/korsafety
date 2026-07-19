@@ -64,15 +64,15 @@ class MarketplaceSeeder extends Seeder
         // 4) 계정
         User::updateOrCreate(['email' => 'admin@korsafety.kr'], [
             'name' => '본사 관리자', 'role' => 'hq_admin', 'seller_id' => $hq->id,
-            'password' => Hash::make('korsafety2013'),
+            'password' => Hash::make('1234'),
         ]);
         User::updateOrCreate(['email' => 'delta@partner.kr'], [
             'name' => '델타 세이프티', 'role' => 'seller', 'seller_id' => $delta->id,
-            'password' => Hash::make('seller123'),
+            'password' => Hash::make('1234'),
         ]);
         User::updateOrCreate(['email' => 'workpro@partner.kr'], [
             'name' => '워크프로', 'role' => 'seller', 'seller_id' => $workpro->id,
-            'password' => Hash::make('seller123'),
+            'password' => Hash::make('1234'),
         ]);
 
         // 5) 샘플 주문 (최근 30일) — 매출 대시보드용
