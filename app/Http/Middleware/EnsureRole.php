@@ -31,6 +31,12 @@ class EnsureRole
                 return $this->blocked($request, '협력사 승인이 완료되지 않았거나 정지된 계정입니다.');
             }
         }
+        if ($user->role === 'purchaser') {
+            $p = $user->purchaser;
+            if (! $p || $p->status !== 'approved') {
+                return $this->blocked($request, '구매 대행자 승인이 완료되지 않았거나 정지된 계정입니다.');
+            }
+        }
         return $next($request);
     }
 

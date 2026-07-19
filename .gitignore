@@ -29,3 +29,4 @@ Thumbs.db
 # 스크랩/업로드된 상품 이미지 (2.6GB, 스크래퍼로 재생성 가능)
 /public/shop/img
 /public/shop/uploads
+*.tar

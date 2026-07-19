@@ -4,6 +4,9 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Agent\ClientController as AgentClient;
 use App\Http\Controllers\Agent\DashboardController as AgentDashboard;
 use App\Http\Controllers\Agent\OrderController as AgentOrder;
+use App\Http\Controllers\Purchaser\BuyerController as PurchaserBuyer;
+use App\Http\Controllers\Purchaser\DashboardController as PurchaserDashboard;
+use App\Http\Controllers\Purchaser\OrderController as PurchaserOrder;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\Manage\AuthController as ManageAuth;
 use App\Http\Controllers\Manage\OrderController as ManageOrder;
@@ -43,6 +46,10 @@ Route::post('partner/apply', [PartnerController::class, 'apply'])->name('partner
 Route::get('agent/apply', [PartnerController::class, 'showAgentApply'])->name('agent.apply');
 Route::post('agent/apply', [PartnerController::class, 'agentApply'])->name('agent.apply.post');
 
+// 구매 대행자 신청 (공개)
+Route::get('purchaser/apply', [PartnerController::class, 'showPurchaserApply'])->name('purchaser.apply');
+Route::post('purchaser/apply', [PartnerController::class, 'purchaserApply'])->name('purchaser.apply.post');
+
 // 본사 콘솔
 Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
     Route::get('/', [AdminController::class, 'index'])->name('admin.index');
@@ -53,6 +60,11 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
     Route::post('agents/{agent}/commission', [AdminController::class, 'updateAgentCommission'])->name('admin.agents.commission');
     Route::get('commissions', [AdminController::class, 'commissions'])->name('admin.commissions');
     Route::post('commissions/{order}/pay', [AdminController::class, 'payCommission'])->name('admin.commissions.pay');
+    Route::get('purchasers', [AdminController::class, 'purchasers'])->name('admin.purchasers');
+    Route::post('purchasers/{purchaser}/status', [AdminController::class, 'updatePurchaserStatus'])->name('admin.purchasers.status');
+    Route::post('purchasers/{purchaser}/cashback', [AdminController::class, 'updatePurchaserCashback'])->name('admin.purchasers.cashback');
+    Route::get('cashbacks', [AdminController::class, 'cashbacks'])->name('admin.cashbacks');
+    Route::post('cashbacks/{order}/pay', [AdminController::class, 'payCashback'])->name('admin.cashbacks.pay');
     Route::get('settings', [AdminController::class, 'settings'])->name('admin.settings');
     Route::post('settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
 });
@@ -79,6 +91,25 @@ Route::prefix('agent')->middleware('role:agent')->group(function () {
     Route::post('orders', [AgentOrder::class, 'store'])->name('agent.orders.store');
     Route::get('orders/{order}', [AgentOrder::class, 'show'])->name('agent.orders.show');
     Route::post('orders/{order}/status', [AgentOrder::class, 'updateStatus'])->name('agent.orders.status');
+});
+
+// 구매 대행자(Purchasing Agent) 콘솔
+Route::prefix('purchaser')->middleware('role:purchaser')->group(function () {
+    Route::get('/', [PurchaserDashboard::class, 'index'])->name('purchaser.index');
+
+    Route::get('buyers', [PurchaserBuyer::class, 'index'])->name('purchaser.buyers.index');
+    Route::get('buyers/create', [PurchaserBuyer::class, 'create'])->name('purchaser.buyers.create');
+    Route::post('buyers', [PurchaserBuyer::class, 'store'])->name('purchaser.buyers.store');
+    Route::get('buyers/{buyer}/edit', [PurchaserBuyer::class, 'edit'])->name('purchaser.buyers.edit');
+    Route::put('buyers/{buyer}', [PurchaserBuyer::class, 'update'])->name('purchaser.buyers.update');
+    Route::delete('buyers/{buyer}', [PurchaserBuyer::class, 'destroy'])->name('purchaser.buyers.destroy');
+
+    Route::get('orders', [PurchaserOrder::class, 'index'])->name('purchaser.orders.index');
+    Route::get('orders/create', [PurchaserOrder::class, 'create'])->name('purchaser.orders.create');
+    Route::get('orders/search', [PurchaserOrder::class, 'searchProducts'])->name('purchaser.orders.search');
+    Route::post('orders', [PurchaserOrder::class, 'store'])->name('purchaser.orders.store');
+    Route::get('orders/{order}', [PurchaserOrder::class, 'show'])->name('purchaser.orders.show');
+    Route::post('orders/{order}/status', [PurchaserOrder::class, 'updateStatus'])->name('purchaser.orders.status');
 });
 
 // 공통 상품/주문 관리 (본사 + 판매점, 각자 자기 스토어로 스코프)

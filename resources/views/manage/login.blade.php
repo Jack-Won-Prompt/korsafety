@@ -28,16 +28,18 @@
         </div>
         <button class="btn btn-accent" type="submit">로그인</button>
 
-        <div class="auth-links">
+        <div class="auth-links" style="flex-wrap:wrap;gap:8px">
             <a href="{{ route('partner.apply') }}">입점 신청</a>
-            <a href="{{ route('agent.apply') }}">협력사 신청 →</a>
+            <a href="{{ route('agent.apply') }}">협력사 신청</a>
+            <a href="{{ route('purchaser.apply') }}">구매 대행자 신청 →</a>
         </div>
 
         <div class="demo">
             <b>데모 계정</b><br>
             본사 관리자 — admin@korsafety.kr / korsafety2013<br>
             판매점 — delta@partner.kr / seller123<br>
-            협력사 — agent@partner.kr / agent123
+            협력사 — agent@partner.kr / agent123<br>
+            구매 대행자 — buyer@partner.kr / buyer123
         </div>
     </form>
 </div>

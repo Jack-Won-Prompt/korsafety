@@ -12,14 +12,14 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'role', 'seller_id', 'agent_id'])]
+#[Fillable(['name', 'email', 'password', 'role', 'seller_id', 'agent_id', 'purchaser_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'email', 'password', 'role', 'seller_id', 'agent_id'];
+    protected $fillable = ['name', 'email', 'password', 'role', 'seller_id', 'agent_id', 'purchaser_id'];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -41,6 +41,11 @@ class User extends Authenticatable
         return $this->belongsTo(Agent::class);
     }
 
+    public function purchaser(): BelongsTo
+    {
+        return $this->belongsTo(Purchaser::class);
+    }
+
     public function isHqAdmin(): bool
     {
         return $this->role === 'hq_admin';
@@ -54,6 +59,11 @@ class User extends Authenticatable
     public function isAgent(): bool
     {
         return $this->role === 'agent';
+    }
+
+    public function isPurchaser(): bool
+    {
+        return $this->role === 'purchaser';
     }
 
     /** Store this user manages (HQ admin and sellers both map to a seller row). */

@@ -98,6 +98,7 @@
                 <a href="#">회사소개</a><a href="#">이용약관</a>
                 <a href="{{ route('partner.apply') }}">입점 신청</a>
                 <a href="{{ route('agent.apply') }}">협력사(영업대행) 신청</a>
+                <a href="{{ route('purchaser.apply') }}">구매 대행자 신청</a>
                 <a href="{{ route('manage.login') }}">판매자·관리자 로그인</a>
             </div>
         </div>

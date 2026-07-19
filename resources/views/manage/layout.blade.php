@@ -2,10 +2,11 @@
     $u = auth()->user();
     $isHq = $u && $u->isHqAdmin();
     $isAgent = $u && $u->isAgent();
+    $isPurchaser = $u && $u->isPurchaser();
     $store = $u?->seller;
-    $consoleName = $isHq ? 'HQ CONSOLE' : ($isAgent ? 'AGENT CONSOLE' : 'SELLER CONSOLE');
-    $roleName = $isHq ? '본사 (Super Admin)' : ($isAgent ? ($u->agent->name ?? '협력사') : ($store->name ?? '판매점'));
-    $roleDesc = $isHq ? '전체 관리 권한' : ($isAgent ? '영업대행 협력사' : '입점 판매점');
+    $consoleName = $isHq ? 'HQ CONSOLE' : ($isAgent ? 'AGENT CONSOLE' : ($isPurchaser ? 'PURCHASE CONSOLE' : 'SELLER CONSOLE'));
+    $roleName = $isHq ? '본사 (Super Admin)' : ($isAgent ? ($u->agent->name ?? '협력사') : ($isPurchaser ? ($u->purchaser->name ?? '구매 대행자') : ($store->name ?? '판매점')));
+    $roleDesc = $isHq ? '전체 관리 권한' : ($isAgent ? '영업대행 협력사' : ($isPurchaser ? '구매대행자' : '입점 판매점'));
 @endphp
 <!DOCTYPE html>
 <html lang="ko">
@@ -50,6 +51,8 @@
                 <a href="{{ route('admin.sellers') }}" class="{{ request()->routeIs('admin.sellers') ? 'active' : '' }}">{!! $ic($navUsers) !!} 판매점 관리</a>
                 <a href="{{ route('admin.agents') }}" class="{{ request()->routeIs('admin.agents') ? 'active' : '' }}">{!! $ic($navBiz) !!} 협력사 관리</a>
                 <a href="{{ route('admin.commissions') }}" class="{{ request()->routeIs('admin.commissions') ? 'active' : '' }}">{!! $ic($navCoin) !!} 커미션 정산</a>
+                <a href="{{ route('admin.purchasers') }}" class="{{ request()->routeIs('admin.purchasers') ? 'active' : '' }}">{!! $ic($navUsers) !!} 구매 대행자 관리</a>
+                <a href="{{ route('admin.cashbacks') }}" class="{{ request()->routeIs('admin.cashbacks') ? 'active' : '' }}">{!! $ic($navCoin) !!} 캐쉬백 정산</a>
                 <a href="{{ route('manage.products.index') }}" class="{{ request()->routeIs('manage.products.*') ? 'active' : '' }}">{!! $ic($navBox) !!} 상품 관리</a>
                 <a href="{{ route('manage.orders') }}" class="{{ request()->routeIs('manage.orders') ? 'active' : '' }}">{!! $ic($navBag) !!} 주문 내역</a>
                 <div class="grp">시스템</div>
@@ -58,6 +61,10 @@
                 <a href="{{ route('agent.index') }}" class="{{ request()->routeIs('agent.index') ? 'active' : '' }}">{!! $ic($navDash) !!} 대시보드</a>
                 <a href="{{ route('agent.orders.index') }}" class="{{ request()->routeIs('agent.orders.*') ? 'active' : '' }}">{!! $ic($navBag) !!} 주문 관리</a>
                 <a href="{{ route('agent.clients.index') }}" class="{{ request()->routeIs('agent.clients.*') ? 'active' : '' }}">{!! $ic($navBiz) !!} 거래처 관리</a>
+            @elseif($isPurchaser)
+                <a href="{{ route('purchaser.index') }}" class="{{ request()->routeIs('purchaser.index') ? 'active' : '' }}">{!! $ic($navDash) !!} 대시보드</a>
+                <a href="{{ route('purchaser.orders.index') }}" class="{{ request()->routeIs('purchaser.orders.*') ? 'active' : '' }}">{!! $ic($navBag) !!} 주문 관리</a>
+                <a href="{{ route('purchaser.buyers.index') }}" class="{{ request()->routeIs('purchaser.buyers.*') ? 'active' : '' }}">{!! $ic($navUsers) !!} 구매자 관리</a>
             @else
                 <a href="{{ route('seller.index') }}" class="{{ request()->routeIs('seller.index') ? 'active' : '' }}">{!! $ic($navDash) !!} 대시보드</a>
                 <a href="{{ route('manage.products.index') }}" class="{{ request()->routeIs('manage.products.*') ? 'active' : '' }}">{!! $ic($navBox) !!} 상품 관리</a>

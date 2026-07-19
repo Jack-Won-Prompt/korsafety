@@ -20,6 +20,7 @@ class AuthController extends Controller
     {
         if ($u->isHqAdmin()) return route('admin.index');
         if ($u->isAgent()) return route('agent.index');
+        if ($u->isPurchaser()) return route('purchaser.index');
         return route('seller.index');
     }
 
@@ -63,8 +64,19 @@ class AuthController extends Controller
             return redirect()->intended(route('agent.index'));
         }
 
+        if ($user->isPurchaser()) {
+            if (! $user->purchaser || $user->purchaser->status !== 'approved') {
+                $msg = ($user->purchaser && $user->purchaser->status === 'pending')
+                    ? '구매 대행자 승인 대기중입니다. 본사 승인 후 이용할 수 있습니다.'
+                    : '정지되었거나 승인되지 않은 구매 대행자 계정입니다.';
+                return $this->fail($request, $msg);
+            }
+            $request->session()->regenerate();
+            return redirect()->intended(route('purchaser.index'));
+        }
+
         // 일반 고객 계정은 관리자 로그인 불가
-        return $this->fail($request, '관리자/판매자/협력사 계정이 아닙니다.');
+        return $this->fail($request, '관리자/판매자/협력사/구매대행 계정이 아닙니다.');
     }
 
     private function fail(Request $request, string $msg)

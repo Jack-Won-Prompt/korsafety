@@ -6,6 +6,7 @@ use App\Models\Agent;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Purchaser;
 use App\Models\Seller;
 use App\Models\Setting;
 use Illuminate\Http\Request;
@@ -151,6 +152,64 @@ class AdminController extends Controller
         abort_unless($order->agent_id && $order->commission_accrued, 422, '지급 대상 주문이 아닙니다.');
         $order->update(['commission_paid_at' => now()]);
         return back()->with('status', "주문 {$order->order_no} 커미션을 지급 처리했습니다.");
+    }
+
+    /** 구매 대행자 관리 */
+    public function purchasers()
+    {
+        $accrued = ['paid', 'shipped', 'done'];
+        $purchasers = Purchaser::withCount(['buyers', 'orders'])
+            ->orderByRaw("FIELD(status,'pending','approved','suspended')")->orderByDesc('id')->get()
+            ->map(function ($p) use ($accrued) {
+                $base = Order::where('purchaser_id', $p->id);
+                $p->cashback_accrued = (int) (clone $base)->whereIn('status', $accrued)->sum('cashback_amount');
+                $p->cashback_pending = (int) (clone $base)->whereIn('status', $accrued)->whereNull('cashback_paid_at')->sum('cashback_amount');
+                return $p;
+            });
+        return view('admin.purchasers', compact('purchasers'));
+    }
+
+    public function updatePurchaserStatus(Request $request, Purchaser $purchaser)
+    {
+        $request->validate(['status' => 'required|in:approved,suspended,pending']);
+        $purchaser->update(['status' => $request->status]);
+        $label = ['approved' => '승인', 'suspended' => '정지', 'pending' => '대기'][$request->status];
+        return back()->with('status', "‘{$purchaser->name}’ 상태를 {$label}(으)로 변경했습니다.");
+    }
+
+    public function updatePurchaserCashback(Request $request, Purchaser $purchaser)
+    {
+        $request->validate(['cashback_rate' => 'required|numeric|min:0|max:100']);
+        $purchaser->update(['cashback_rate' => $request->cashback_rate]);
+        return back()->with('status', "‘{$purchaser->name}’ 캐쉬백 비율을 {$request->cashback_rate}%로 변경했습니다.");
+    }
+
+    /** 캐쉬백 정산 */
+    public function cashbacks(Request $request)
+    {
+        $accrued = ['paid', 'shipped', 'done'];
+        $filter = $request->query('f', 'pending');
+
+        $q = Order::with(['purchaser', 'buyer'])->whereNotNull('purchaser_id')->whereIn('status', $accrued);
+        if ($filter === 'pending') $q->whereNull('cashback_paid_at');
+        elseif ($filter === 'paid') $q->whereNotNull('cashback_paid_at');
+
+        $orders = $q->latest('id')->paginate(20)->withQueryString();
+
+        $summary = [
+            'accrued' => (int) Order::whereNotNull('purchaser_id')->whereIn('status', $accrued)->sum('cashback_amount'),
+            'pending' => (int) Order::whereNotNull('purchaser_id')->whereIn('status', $accrued)->whereNull('cashback_paid_at')->sum('cashback_amount'),
+            'paid' => (int) Order::whereNotNull('purchaser_id')->whereNotNull('cashback_paid_at')->sum('cashback_amount'),
+        ];
+
+        return view('admin.cashbacks', compact('orders', 'summary', 'filter'));
+    }
+
+    public function payCashback(Request $request, Order $order)
+    {
+        abort_unless($order->purchaser_id && $order->cashback_accrued, 422, '지급 대상 주문이 아닙니다.');
+        $order->update(['cashback_paid_at' => now()]);
+        return back()->with('status', "주문 {$order->order_no} 캐쉬백을 지급 처리했습니다.");
     }
 
     /** 설정 */
