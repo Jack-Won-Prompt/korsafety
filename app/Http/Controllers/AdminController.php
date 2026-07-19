@@ -212,6 +212,30 @@ class AdminController extends Controller
         return back()->with('status', "주문 {$order->order_no} 캐쉬백을 지급 처리했습니다.");
     }
 
+    /** 로그인 이력 */
+    public function loginLogs(Request $request)
+    {
+        $status = $request->query('status', 'all');   // all | success | failed
+        $role = $request->query('role', 'all');
+        $q = trim((string) $request->query('q', ''));
+
+        $query = \App\Models\LoginLog::query()->latest('created_at')->latest('id');
+        if (in_array($status, ['success', 'failed'], true)) $query->where('status', $status);
+        if ($role !== 'all') $query->where('role', $role);
+        if ($q !== '') $query->where(fn ($w) => $w->where('email', 'like', "%$q%")->orWhere('name', 'like', "%$q%")->orWhere('ip_address', 'like', "%$q%"));
+
+        $logs = $query->paginate(30)->withQueryString();
+
+        $summary = [
+            'total' => \App\Models\LoginLog::count(),
+            'success' => \App\Models\LoginLog::where('status', 'success')->count(),
+            'failed' => \App\Models\LoginLog::where('status', 'failed')->count(),
+            'today' => \App\Models\LoginLog::where('created_at', '>=', now()->startOfDay())->count(),
+        ];
+
+        return view('admin.login-logs', compact('logs', 'summary', 'status', 'role', 'q'));
+    }
+
     /** 설정 */
     public function settings()
     {

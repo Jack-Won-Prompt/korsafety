@@ -65,6 +65,7 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
     Route::post('purchasers/{purchaser}/cashback', [AdminController::class, 'updatePurchaserCashback'])->name('admin.purchasers.cashback');
     Route::get('cashbacks', [AdminController::class, 'cashbacks'])->name('admin.cashbacks');
     Route::post('cashbacks/{order}/pay', [AdminController::class, 'payCashback'])->name('admin.cashbacks.pay');
+    Route::get('login-logs', [AdminController::class, 'loginLogs'])->name('admin.login-logs');
     Route::get('settings', [AdminController::class, 'settings'])->name('admin.settings');
     Route::post('settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
 });

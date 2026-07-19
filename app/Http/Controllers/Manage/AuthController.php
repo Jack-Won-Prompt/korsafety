@@ -3,11 +3,29 @@
 namespace App\Http\Controllers\Manage;
 
 use App\Http\Controllers\Controller;
+use App\Models\LoginLog;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
+    /** 로그인 이력 기록 */
+    private function record(Request $request, ?User $user, string $email, string $status, ?string $note = null): void
+    {
+        LoginLog::create([
+            'user_id' => $user?->id,
+            'email' => $email,
+            'name' => $user?->name,
+            'role' => $user?->role,
+            'status' => $status,
+            'note' => $note,
+            'ip_address' => $request->ip(),
+            'user_agent' => mb_substr((string) $request->userAgent(), 0, 500),
+            'created_at' => now(),
+        ]);
+    }
+
     public function showLogin(Request $request)
     {
         if ($u = Auth::user()) {
@@ -32,12 +50,14 @@ class AuthController extends Controller
         ]);
 
         if (! Auth::attempt($data, $request->boolean('remember'))) {
+            $this->record($request, null, $data['email'], 'failed', '이메일 또는 비밀번호 불일치');
             return back()->withErrors(['email' => '이메일 또는 비밀번호가 올바르지 않습니다.'])->withInput();
         }
 
         $user = Auth::user();
 
         if ($user->isHqAdmin()) {
+            $this->record($request, $user, $user->email, 'success');
             $request->session()->regenerate();
             return redirect()->intended(route('admin.index'));
         }
@@ -47,8 +67,9 @@ class AuthController extends Controller
                 $msg = ($user->seller && $user->seller->status === 'pending')
                     ? '입점 승인 대기중입니다. 본사 승인 후 이용할 수 있습니다.'
                     : '정지되었거나 승인되지 않은 판매점 계정입니다.';
-                return $this->fail($request, $msg);
+                return $this->fail($request, $msg, $user);
             }
+            $this->record($request, $user, $user->email, 'success');
             $request->session()->regenerate();
             return redirect()->intended(route('seller.index'));
         }
@@ -58,8 +79,9 @@ class AuthController extends Controller
                 $msg = ($user->agent && $user->agent->status === 'pending')
                     ? '협력사 승인 대기중입니다. 본사 승인 후 이용할 수 있습니다.'
                     : '정지되었거나 승인되지 않은 협력사 계정입니다.';
-                return $this->fail($request, $msg);
+                return $this->fail($request, $msg, $user);
             }
+            $this->record($request, $user, $user->email, 'success');
             $request->session()->regenerate();
             return redirect()->intended(route('agent.index'));
         }
@@ -69,18 +91,20 @@ class AuthController extends Controller
                 $msg = ($user->purchaser && $user->purchaser->status === 'pending')
                     ? '구매 대행자 승인 대기중입니다. 본사 승인 후 이용할 수 있습니다.'
                     : '정지되었거나 승인되지 않은 구매 대행자 계정입니다.';
-                return $this->fail($request, $msg);
+                return $this->fail($request, $msg, $user);
             }
+            $this->record($request, $user, $user->email, 'success');
             $request->session()->regenerate();
             return redirect()->intended(route('purchaser.index'));
         }
 
         // 일반 고객 계정은 관리자 로그인 불가
-        return $this->fail($request, '관리자/판매자/협력사/구매대행 계정이 아닙니다.');
+        return $this->fail($request, '관리자/판매자/협력사/구매대행 계정이 아닙니다.', $user);
     }
 
-    private function fail(Request $request, string $msg)
+    private function fail(Request $request, string $msg, ?User $user = null)
     {
+        $this->record($request, $user, $user?->email ?? (string) $request->input('email'), 'failed', $msg);
         Auth::logout();
         $request->session()->invalidate();
         return back()->withErrors(['email' => $msg])->withInput();
