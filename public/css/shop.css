@@ -32,6 +32,7 @@ body {
   margin: 0; font-family: var(--font); color: var(--ink);
   background: var(--bg); line-height: 1.55; letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  overflow-x: clip; /* 가로 오버플로우 방지 (sticky 헤더 유지) */
 }
 img { display: block; max-width: 100%; }
 a { color: inherit; text-decoration: none; }
@@ -387,6 +388,15 @@ h1,h2,h3,h4 { margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height:
   .search-form { display: none; }
   .menu-btn { display: inline-flex; }
   .catnav { display: none; }
+  /* 모바일 헤더 폭 오버플로우 방지 */
+  .topbar { display: none; }
+  .header-main { gap: 10px; height: 62px; }
+  .brand-mark { width: 34px; height: 34px; }
+  .brand-name { font-size: 18px; }
+  .brand-sub { display: none; }
+  .header-actions { margin-left: auto; gap: 2px; }
+  .icon-btn { padding: 0 7px; gap: 0; height: 40px; }
+  .icon-btn .lbl { display: none; }
   .hero-inner { padding: 44px 26px; }
   .hero h1 { font-size: 32px; }
   .hero-slider { height: 440px; border-radius: 18px; }
