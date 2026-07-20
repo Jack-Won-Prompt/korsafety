@@ -8,6 +8,7 @@ use App\Http\Controllers\Purchaser\BuyerController as PurchaserBuyer;
 use App\Http\Controllers\Purchaser\DashboardController as PurchaserDashboard;
 use App\Http\Controllers\Purchaser\OrderController as PurchaserOrder;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\Manage\AuthController as ManageAuth;
 use App\Http\Controllers\Manage\OrderController as ManageOrder;
 use App\Http\Controllers\Manage\PartnerController;
@@ -26,6 +27,13 @@ Route::delete('/cart/remove/{product}', [CartController::class, 'remove'])->name
 
 Route::get('/category/{category}', [ShopController::class, 'category'])->name('category.show');
 Route::get('/product/{product}', [ShopController::class, 'product'])->name('product.show');
+
+// 고객 로그인 / 회원가입
+Route::get('/login', [CustomerAuthController::class, 'showLogin'])->name('login');
+Route::post('/login', [CustomerAuthController::class, 'login'])->name('login.post');
+Route::get('/register', [CustomerAuthController::class, 'showRegister'])->name('register');
+Route::post('/register', [CustomerAuthController::class, 'register'])->name('register.post');
+Route::post('/logout', [CustomerAuthController::class, 'logout'])->name('logout');
 
 /*
 |--------------------------------------------------------------------------

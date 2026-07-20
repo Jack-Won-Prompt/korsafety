@@ -54,10 +54,23 @@
                     <span class="lbl">장바구니</span>
                     <span class="cart-badge {{ $cartCount ? '' : 'hide' }}" id="cart-badge">{{ $cartCount }}</span>
                 </a>
-                <a href="#" class="icon-btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
-                    <span class="lbl">로그인</span>
-                </a>
+                @auth
+                    <a href="{{ auth()->user()->isHqAdmin() || auth()->user()->isSeller() || auth()->user()->isAgent() || auth()->user()->isPurchaser() ? route('manage.login') : route('home') }}" class="icon-btn" title="{{ auth()->user()->name }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+                        <span class="lbl acct-name">{{ auth()->user()->name }}</span>
+                    </a>
+                    <form action="{{ route('logout') }}" method="post" class="logout-form">@csrf
+                        <button type="submit" class="icon-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span class="lbl">로그아웃</span>
+                        </button>
+                    </form>
+                @else
+                    <a href="{{ route('login') }}" class="icon-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+                        <span class="lbl">로그인</span>
+                    </a>
+                @endauth
             </div>
         </div>
     </div>
@@ -120,6 +133,13 @@
             <a href="{{ route('category.show', $cat) }}">{{ $cat->name }}</a>
         @endforeach
         <a href="{{ route('cart.index') }}">장바구니</a>
+        @auth
+            <span style="display:block;padding:13px 8px;color:var(--muted);font-size:13px">{{ auth()->user()->name }}님</span>
+            <form action="{{ route('logout') }}" method="post">@csrf<button type="submit" style="width:100%;text-align:left;background:none;border:0;padding:13px 8px;font-weight:600;font-size:15px;color:var(--accent)">로그아웃</button></form>
+        @else
+            <a href="{{ route('login') }}">로그인</a>
+            <a href="{{ route('register') }}">회원가입</a>
+        @endauth
     </div>
 </div>
 
@@ -129,6 +149,9 @@
 </div>
 
 <script src="{{ asset('js/shop.js') }}?v={{ @filemtime(public_path('js/shop.js')) }}"></script>
+@if(session('welcome'))
+<script>document.addEventListener('DOMContentLoaded',function(){var t=document.getElementById('toast');if(!t)return;t.querySelector('.msg').textContent=@json(session('welcome'));t.classList.add('show');setTimeout(function(){t.classList.remove('show');},3200);});</script>
+@endif
 @stack('scripts')
 </body>
 </html>
