@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             MarketplaceSeeder::class,  // 본사 직영·판매점 + 본사/판매점 계정 + 샘플주문
             AgentSeeder::class,        // 협력사 + 거래처 + 커미션 주문
             PurchaserSeeder::class,    // 구매대행자 + 구매자 + 캐쉬백 주문
+            YkSeeder::class,           // 유한킴벌리 카테고리 + 상품
         ]);
     }
 }
