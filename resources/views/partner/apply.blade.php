@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>입점 신청 · KOR SAFETY</title>
+    <link rel="icon" type="image/png" href="{{ asset('brand/favicon.png') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ @filemtime(public_path('css/admin.css')) }}">
 </head>
@@ -11,7 +12,7 @@
 <div class="auth-wrap" style="padding:40px 0">
     <form class="auth-card wide" action="{{ route('partner.apply.post') }}" method="post">
         @csrf
-        <div class="m">KS</div>
+        <img src="{{ asset('brand/icon.png') }}" class="m-logo" alt="KS">
         <h1>입점 판매점 신청</h1>
         <p class="sub">신청 후 본사 승인이 완료되면 상품을 등록·판매할 수 있습니다.</p>
 

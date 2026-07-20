@@ -6,7 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'KOR SAFETY · 산업안전용품 전문 쇼핑몰')</title>
     <meta name="description" content="@yield('meta_desc', '안전화, 워크웨어, 안전용품, 안전시설물까지 — 현장을 지키는 모든 안전장비를 한 곳에서.')">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2312151b'/%3E%3Ctext x='16' y='22' font-family='Arial' font-size='15' font-weight='900' fill='%23ff5722' text-anchor='middle'%3EKS%3C/text%3E%3C/svg%3E">
+    <link rel="icon" type="image/png" href="{{ asset('brand/favicon.png') }}?v={{ @filemtime(public_path('brand/favicon.png')) }}">
+    <link rel="apple-touch-icon" href="{{ asset('brand/icon.png') }}">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
     <link rel="stylesheet" href="{{ asset('css/shop.css') }}?v={{ @filemtime(public_path('css/shop.css')) }}">
@@ -30,11 +31,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg>
             </button>
             <a href="{{ route('home') }}" class="brand">
-                <span class="brand-mark"><span>KS</span></span>
-                <span>
-                    <span class="brand-name">KOR<b>SAFETY</b></span>
-                    <span class="brand-sub">SAFETY LIFE PARTNER</span>
-                </span>
+                <img src="{{ asset('brand/logo-light.png') }}" alt="KOR SAFETY" class="brand-logo">
             </a>
 
             <form class="search-form" action="{{ route('search') }}" method="get">
@@ -92,7 +89,7 @@
     <div class="wrap">
         <div class="footer-top">
             <div class="footer-brand">
-                <span class="brand-name">KOR<b style="color:var(--accent)">SAFETY</b></span>
+                <img src="{{ asset('brand/logo-dark.png') }}" alt="KOR SAFETY" class="footer-logo">
                 <p>산업 현장의 안전을 책임지는 대한민국 대표 안전용품 전문몰. 안전화부터 워크웨어, 안전시설물까지 검증된 정품만을 합리적인 가격으로 제공합니다.</p>
             </div>
             <div class="fcol">

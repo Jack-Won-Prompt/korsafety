@@ -21,6 +21,8 @@ h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.02em}
   position:sticky;top:0;height:100vh}
 .side-brand{display:flex;align-items:center;gap:11px;padding:22px 22px 20px;border-bottom:1px solid var(--line-d)}
 .side-brand .m{width:36px;height:36px;border-radius:9px;background:var(--accent);display:grid;place-items:center;color:#fff;font-weight:900;font-size:15px}
+.side-brand .side-logo{width:40px;height:40px;object-fit:contain;flex:0 0 40px}
+.auth-card .m-logo{width:56px;height:56px;object-fit:contain;display:block;margin-bottom:18px}
 .side-brand b{color:#fff;font-size:15px;font-weight:900;display:block;line-height:1.2}
 .side-brand small{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.13em}
 .side-role{margin:16px 16px 6px;padding:10px 14px;background:var(--side-2);border-radius:10px;display:flex;align-items:center;gap:10px}

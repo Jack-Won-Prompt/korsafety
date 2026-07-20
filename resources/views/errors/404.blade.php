@@ -24,7 +24,7 @@
 </head>
 <body>
     <div class="box">
-        <div class="mark"><span class="m">KS</span><b>KOR<span>SAFETY</span></b></div>
+        <img src="{{ asset('brand/logo-light.png') }}" alt="KOR SAFETY" style="height:40px;margin-bottom:34px">
         <div class="code">404</div>
         <h1>페이지를 찾을 수 없습니다</h1>
         <p>요청하신 페이지가 삭제되었거나 주소가 변경되었을 수 있습니다.<br>주소를 다시 확인해 주세요.</p>

@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>협력사 신청 · KOR SAFETY</title>
+    <link rel="icon" type="image/png" href="{{ asset('brand/favicon.png') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ @filemtime(public_path('css/admin.css')) }}">
 </head>
@@ -11,7 +12,7 @@
 <div class="auth-wrap" style="padding:40px 0">
     <form class="auth-card wide" action="{{ route('agent.apply.post') }}" method="post">
         @csrf
-        <div class="m">KS</div>
+        <img src="{{ asset('brand/icon.png') }}" class="m-logo" alt="KS">
         <h1>협력사(영업대행) 신청</h1>
         <p class="sub">기업·병원 영업을 대행하고 판매대금의 일정 비율을 커미션으로 지급받는 협력사 신청입니다. 본사 승인 후 이용 가능합니다.</p>
 

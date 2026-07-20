@@ -15,6 +15,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', '관리 콘솔') · KOR SAFETY</title>
+    <link rel="icon" type="image/png" href="{{ asset('brand/favicon.png') }}?v={{ @filemtime(public_path('brand/favicon.png')) }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ @filemtime(public_path('css/admin.css')) }}">
 </head>
@@ -22,7 +23,7 @@
 <div class="console">
     <aside class="sidebar">
         <div class="side-brand">
-            <span class="m">KS</span>
+            <img src="{{ asset('brand/icon.png') }}" alt="KS" class="side-logo">
             <span><b>KOR SAFETY</b><small>{{ $consoleName }}</small></span>
         </div>
         <div class="side-role">

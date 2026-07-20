@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>관리 로그인 · KOR SAFETY</title>
+    <link rel="icon" type="image/png" href="{{ asset('brand/favicon.png') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}?v={{ @filemtime(public_path('css/admin.css')) }}">
 </head>
@@ -11,7 +12,7 @@
 <div class="auth-wrap">
     <form class="auth-card" action="{{ route('manage.login.post') }}" method="post">
         @csrf
-        <div class="m">KS</div>
+        <img src="{{ asset('brand/icon.png') }}" class="m-logo" alt="KS">
         <h1>관리 콘솔 로그인</h1>
         <p class="sub">본사 관리자 · 입점 판매점 공용 로그인</p>
 
