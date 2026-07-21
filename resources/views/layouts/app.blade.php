@@ -68,6 +68,10 @@
                         <span class="lbl">로그인</span>
                     </a>
                 @endauth
+                <a href="{{ route('about') }}" class="icon-btn {{ request()->routeIs('about') ? 'active' : '' }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21V8l6-4v17M9 21V4l6 3v14M15 21V7l6 3v11" stroke-linejoin="round"/><path d="M2 21h20" stroke-linecap="round"/></svg>
+                    <span class="lbl">회사소개</span>
+                </a>
             </div>
         </div>
     </div>
@@ -105,7 +109,7 @@
             </div>
             <div class="fcol">
                 <h4>회사 · 파트너</h4>
-                <a href="#">회사소개</a><a href="#">이용약관</a>
+                <a href="{{ route('about') }}">회사소개</a><a href="#">이용약관</a>
                 <a href="{{ route('partner.apply') }}">입점 신청</a>
                 <a href="{{ route('agent.apply') }}">협력사(영업대행) 신청</a>
                 <a href="{{ route('purchaser.apply') }}">구매 대행자 신청</a>

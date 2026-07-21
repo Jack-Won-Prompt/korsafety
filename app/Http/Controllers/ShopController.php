@@ -9,6 +9,11 @@ use Illuminate\Http\Request;
 
 class ShopController extends Controller
 {
+    public function about()
+    {
+        return view('shop.about');
+    }
+
     public function home()
     {
         $categories = Category::orderBy('sort')->withCount('products')->get();

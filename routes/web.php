@@ -18,6 +18,7 @@ use App\Http\Controllers\ShopController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [ShopController::class, 'home'])->name('home');
+Route::get('/about', [ShopController::class, 'about'])->name('about');
 Route::get('/search', [ShopController::class, 'search'])->name('search');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
