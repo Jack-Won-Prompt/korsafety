@@ -9,6 +9,7 @@ use App\Http\Controllers\Purchaser\DashboardController as PurchaserDashboard;
 use App\Http\Controllers\Purchaser\OrderController as PurchaserOrder;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerAuthController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\Manage\AuthController as ManageAuth;
 use App\Http\Controllers\Manage\OrderController as ManageOrder;
 use App\Http\Controllers\Manage\PartnerController;
@@ -35,6 +36,12 @@ Route::post('/login', [CustomerAuthController::class, 'login'])->name('login.pos
 Route::get('/register', [CustomerAuthController::class, 'showRegister'])->name('register');
 Route::post('/register', [CustomerAuthController::class, 'register'])->name('register.post');
 Route::post('/logout', [CustomerAuthController::class, 'logout'])->name('logout');
+
+// 비밀번호 찾기 / 재설정 (전 계정 공통)
+Route::get('/forgot-password', [PasswordResetController::class, 'showLinkRequest'])->name('password.request');
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLink'])->name('password.email');
+Route::get('/reset-password/{token}', [PasswordResetController::class, 'showReset'])->name('password.reset');
+Route::post('/reset-password', [PasswordResetController::class, 'reset'])->name('password.update');
 
 /*
 |--------------------------------------------------------------------------

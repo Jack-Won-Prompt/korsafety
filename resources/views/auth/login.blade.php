@@ -24,6 +24,7 @@
             </div>
             <div class="row-between">
                 <label><input type="checkbox" name="remember" value="1"> 로그인 상태 유지</label>
+                <a href="{{ route('password.request') }}">비밀번호 찾기</a>
             </div>
             <button type="submit" class="btn btn-primary btn-lg btn-block">로그인</button>
         </form>

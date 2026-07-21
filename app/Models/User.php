@@ -66,6 +66,12 @@ class User extends Authenticatable
         return $this->role === 'purchaser';
     }
 
+    /** 한국어 비밀번호 재설정 메일 */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new \App\Notifications\ResetPasswordKo($token));
+    }
+
     /** Store this user manages (HQ admin and sellers both map to a seller row). */
     public function managedSeller(): ?Seller
     {

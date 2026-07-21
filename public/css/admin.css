@@ -9,7 +9,7 @@
   --font:"Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,"Malgun Gothic",system-ui,sans-serif;
 }
 *{box-sizing:border-box}
-body{margin:0;font-family:var(--font);background:var(--bg);color:var(--ink);letter-spacing:-.01em}
+body{margin:0;font-family:var(--font);background:var(--bg);color:var(--ink);letter-spacing:-.01em;word-break:keep-all;overflow-wrap:break-word}
 a{color:inherit;text-decoration:none}
 button{font-family:inherit;cursor:pointer}
 h1,h2,h3,h4{margin:0;font-weight:800;letter-spacing:-.02em}

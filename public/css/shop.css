@@ -33,6 +33,7 @@ body {
   background: var(--bg); line-height: 1.55; letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   overflow-x: clip; /* 가로 오버플로우 방지 (sticky 헤더 유지) */
+  word-break: keep-all; overflow-wrap: break-word; /* 한글 단어 단위 줄바꿈(글자 세로 쪼개짐 방지) */
 }
 img { display: block; max-width: 100%; }
 a { color: inherit; text-decoration: none; }

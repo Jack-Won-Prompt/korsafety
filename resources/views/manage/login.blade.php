@@ -29,7 +29,11 @@
         </div>
         <button class="btn btn-accent" type="submit">로그인</button>
 
-        <div class="auth-links" style="flex-wrap:wrap;gap:8px">
+        <div style="text-align:center;margin-top:16px">
+            <a href="{{ route('password.request') }}" style="color:#8b93a1;font-size:13px">비밀번호를 잊으셨나요?</a>
+        </div>
+
+        <div class="auth-links" style="flex-wrap:wrap;gap:8px;margin-top:14px">
             <a href="{{ route('partner.apply') }}">입점 신청</a>
             <a href="{{ route('agent.apply') }}">협력사 신청</a>
             <a href="{{ route('purchaser.apply') }}">구매 대행자 신청 →</a>
