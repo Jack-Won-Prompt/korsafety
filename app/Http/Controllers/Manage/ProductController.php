@@ -181,6 +181,8 @@ class ProductController extends Controller
             $line++;
             // 첫 열의 BOM 제거
             if (isset($row[0])) { $row[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $row[0]); }
+            // 엑셀이 저장한 CP949(한글 ANSI) → UTF-8 변환 (UTF-8이면 그대로)
+            $row = array_map(fn ($v) => $this->toUtf8($v), $row);
             // 헤더 줄 스킵
             if ($line === 1 && trim((string) ($row[0] ?? '')) === '상품ID') { continue; }
             // 빈 줄 스킵
@@ -222,6 +224,16 @@ class ProductController extends Controller
 
         return redirect()->route('manage.products.index')
             ->with('status', "엑셀 반영 완료 — 신규 {$created}건, 수정 {$updated}건".($skipped ? ", 건너뜀 {$skipped}건" : ''));
+    }
+
+    /** 셀 값을 UTF-8로 정규화 (엑셀 CP949/EUC-KR 저장분 대응) */
+    private function toUtf8($value): ?string
+    {
+        if ($value === null) { return null; }
+        $value = (string) $value;
+        if ($value === '' || mb_check_encoding($value, 'UTF-8')) { return $value; }
+        // CP949(EUC-KR 상위집합)로 간주하고 변환
+        return mb_convert_encoding($value, 'UTF-8', 'CP949');
     }
 
     // ---- helpers ----
