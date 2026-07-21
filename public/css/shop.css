@@ -437,6 +437,18 @@ h1,h2,h3,h4 { margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height:
 .brand-card .en { font-size: 12px; color: var(--accent); font-weight: 800; letter-spacing:.03em; }
 .brand-card p { font-size: 13.5px; color: var(--muted); line-height: 1.6; margin: 8px 0 0; }
 
+/* 종합 라인업 카드 */
+.lineup-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; }
+.lineup-card { display:flex; flex-direction:column; background:#fff; border:1px solid var(--line); border-radius: var(--radius); overflow:hidden; text-decoration:none; color:inherit; transition: border-color .15s, transform .15s, box-shadow .15s; }
+.lineup-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 12px 28px rgba(18,21,27,.09); }
+.lu-thumb { position:relative; aspect-ratio: 4/3; background: var(--bg-soft, #f6f7f9); display:grid; place-items:center; overflow:hidden; }
+.lu-thumb img { width:100%; height:100%; object-fit: contain; padding: 14px; }
+.lu-thumb svg { width:48px; height:48px; color: var(--line); }
+.lu-body { padding: 18px 18px 20px; display:flex; flex-direction:column; gap:8px; flex:1; }
+.lu-body h3 { font-size: 16px; margin:0; font-weight:800; }
+.lu-items { font-size: 13px; color: var(--ink-2); line-height:1.55; margin:0; }
+.lu-brands { margin-top:auto; font-size: 12px; color: var(--muted); line-height:1.6; padding-top:10px; border-top:1px dashed var(--line); }
+
 .why-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 18px; }
 .why-card { display:flex; gap:16px; background:#fff; border:1px solid var(--line); border-radius: var(--radius); padding: 24px; }
 .why-card .wi { width:44px; height:44px; flex:0 0 44px; border-radius:12px; background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; }
@@ -460,12 +472,15 @@ h1,h2,h3,h4 { margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height:
 @media (max-width: 1080px) {
   .biz-grid { grid-template-columns: repeat(2,1fr); }
 }
+@media (max-width: 1024px) {
+  .lineup-grid { grid-template-columns: repeat(2,1fr); }
+}
 @media (max-width: 720px) {
   .about-hero-in { padding: 40px 26px; }
   .about-hero h1 { font-size: 28px; }
   .about-overview, .brand-grid, .why-grid, .contact-box { grid-template-columns: 1fr; gap: 24px; }
   .biz-grid, .cust-grid, .about-stats { grid-template-columns: 1fr; }
-  .cust-grid { grid-template-columns: 1fr 1fr; }
+  .cust-grid, .lineup-grid { grid-template-columns: 1fr 1fr; }
   .contact-box { padding: 32px 24px; }
 }
 

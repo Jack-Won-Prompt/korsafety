@@ -43,12 +43,13 @@
 
             <div class="pd-price-box">
                 <div class="pd-price">
-                    @if($final)
+                    @if(\App\Models\Setting::get('price_display_mode') === 'price' && $final)
                         @if($product->has_discount)<span class="off">{{ $product->discount_percent }}%</span>@endif
                         <span class="now">{{ number_format($final) }}<span class="won">원</span></span>
                         @if($product->has_discount)<span class="was">{{ number_format($product->price) }}원</span>@endif
                     @else
-                        <span class="ask">가격문의</span>
+                        <span class="ask">가격 문의</span>
+                        <a href="tel:02-2273-9533" class="btn btn-ghost btn-sm" style="margin-left:12px">☎ 02-2273-9533</a>
                     @endif
                 </div>
             </div>
@@ -105,7 +106,7 @@
                 <div><dt>상품코드</dt><dd>YW-{{ $product->external_no }}</dd></div>
                 <div><dt>카테고리</dt><dd>{{ $product->category->name ?? '-' }}</dd></div>
                 <div><dt>안전인증</dt><dd>KCs 안전인증 정품</dd></div>
-                <div><dt>판매가</dt><dd>{{ $final ? number_format($final).'원' : '가격문의' }}</dd></div>
+                <div><dt>판매가</dt><dd>{{ \App\Models\Setting::get('price_display_mode') === 'price' && $final ? number_format($final).'원' : '가격 문의 (02-2273-9533)' }}</dd></div>
             </dl>
         </div>
 

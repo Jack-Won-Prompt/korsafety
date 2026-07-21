@@ -61,18 +61,30 @@
         </div>
     </section>
 
-    {{-- 취급 브랜드 --}}
+    {{-- 종합 라인업 (취급 품목 · 브랜드) --}}
     <section class="about-sec">
         <div class="about-head">
-            <div class="k">BRANDS</div>
-            <h2>취급 브랜드</h2>
-            <p>글로벌 킴벌리클라크·유한킴벌리 프로페셔널의 B2B 브랜드를 정품으로 공급합니다.</p>
+            <div class="k">ONLINE SAFETY MALL</div>
+            <h2>㈜한국안전 안전용품 종합 라인업</h2>
+            <p>안전화부터 개인보호구, 소방·비상구호용품, 유한킴벌리 산업위생용품까지 — 카테고리별 검증된 브랜드 정품을 한 곳에서 공급합니다.</p>
         </div>
-        <div class="brand-grid">
-            <div class="brand-card"><div class="bi">KG</div><div><div class="en">KleenGuard®</div><h3>크린가드</h3><p>보호복·마스크·글러브·보안경·위생화 등 개인보호구(PPE) 대표 브랜드.</p></div></div>
-            <div class="brand-card"><div class="bi">KT</div><div><div class="en">Kimtech®</div><h3>킴테크</h3><p>클린룸·실험실용 정밀 와이퍼·클린룸 와이퍼·장갑.</p></div></div>
-            <div class="brand-card"><div class="bi">WA</div><div><div class="en">WypAll®</div><h3>와이프올</h3><p>제조·푸드서비스용 산업용 와이퍼. 하이드로니트 공법 원단으로 뛰어난 흡수·내구성.</p></div></div>
-            <div class="brand-card"><div class="bi">KS</div><div><div class="en">Kleenex® · Scott®</div><h3>크리넥스 · 스카트</h3><p>화장지·핸드타올·미용티슈·스킨케어 등 워시룸 위생용품.</p></div></div>
+        <div class="lineup-grid">
+            @foreach($lineup as $row)
+                <a href="{{ route('category.show', $row['slug']) }}" class="lineup-card">
+                    <div class="lu-thumb">
+                        @if(!empty($row['image']))
+                            <img src="{{ asset($row['image']) }}" alt="{{ $row['title'] }}" loading="lazy" onerror="this.style.visibility='hidden'">
+                        @else
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+                        @endif
+                    </div>
+                    <div class="lu-body">
+                        <h3>{{ $row['title'] }}</h3>
+                        <p class="lu-items">{{ $row['items'] }}</p>
+                        <div class="lu-brands">{{ $row['brands'] }}</div>
+                    </div>
+                </a>
+            @endforeach
         </div>
     </section>
 

@@ -117,6 +117,113 @@ class ProductController extends Controller
         return redirect()->route('manage.products.edit', $product)->with('status', '이미지가 편집·저장되었습니다.');
     }
 
+    /** CSV 헤더 (엑셀 호환, UTF-8) */
+    private const CSV_HEADER = ['상품ID', '상품명', '브랜드', '카테고리', '판매가', '할인가', '품절(1=품절)', '대표이미지경로'];
+
+    /** 전체 품목 엑셀(CSV) 다운로드 — 현재 스토어 스코프 */
+    public function exportCsv()
+    {
+        $filename = 'products_'.date('Ymd_His').'.csv';
+        $products = $this->scoped()->with('category')->orderBy('id')->get();
+
+        return response()->streamDownload(function () use ($products) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF"); // UTF-8 BOM (엑셀 한글 깨짐 방지)
+            fputcsv($out, self::CSV_HEADER);
+            foreach ($products as $p) {
+                fputcsv($out, [
+                    $p->id,
+                    $p->name,
+                    $p->brand,
+                    optional($p->category)->name,
+                    $p->price,
+                    $p->sale_price,
+                    $p->is_soldout ? 1 : 0,
+                    $p->main_image,
+                ]);
+            }
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /** 업로드용 빈 템플릿(헤더만) 다운로드 */
+    public function importTemplate()
+    {
+        return response()->streamDownload(function () {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, self::CSV_HEADER);
+            fclose($out);
+        }, 'products_template.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /** 엑셀(CSV) 업로드 — 상품ID가 있으면 수정, 없으면 신규 등록 */
+    public function importCsv(Request $request)
+    {
+        $request->validate(['file' => 'required|file|max:8192'], [], ['file' => '파일']);
+
+        $upload = $request->file('file');
+        $ext = strtolower($upload->getClientOriginalExtension());
+        if (! in_array($ext, ['csv', 'txt'], true)) {
+            return back()->withErrors(['file' => 'CSV(.csv) 파일만 업로드할 수 있습니다.']);
+        }
+
+        $path = $upload->getRealPath();
+        $fh = fopen($path, 'r');
+        if ($fh === false) {
+            return back()->withErrors(['file' => '파일을 열 수 없습니다.']);
+        }
+
+        $categories = Category::pluck('id', 'name'); // 이름 → id
+        $created = 0; $updated = 0; $skipped = 0; $line = 0;
+
+        while (($row = fgetcsv($fh)) !== false) {
+            $line++;
+            // 첫 열의 BOM 제거
+            if (isset($row[0])) { $row[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $row[0]); }
+            // 헤더 줄 스킵
+            if ($line === 1 && trim((string) ($row[0] ?? '')) === '상품ID') { continue; }
+            // 빈 줄 스킵
+            if (count(array_filter($row, fn ($v) => trim((string) $v) !== '')) === 0) { continue; }
+
+            [$id, $name, $brand, $catName, $price, $sale, $soldout, $image] = array_pad($row, 8, null);
+            $name = trim((string) $name);
+            if ($name === '') { $skipped++; continue; }
+
+            $id = (int) trim((string) $id);
+            $product = $id > 0 ? $this->scoped()->find($id) : null;
+            $isNew = false;
+            if (! $product) {
+                $product = new Product();
+                $product->seller_id = $this->sellerId();
+                $isNew = true;
+            }
+
+            $catId = null;
+            $catName = trim((string) $catName);
+            if ($catName !== '') { $catId = $categories[$catName] ?? null; }
+
+            $product->name = $name;
+            $product->brand = trim((string) $brand) ?: null;
+            if ($catId) { $product->category_id = $catId; }
+            $product->price = is_numeric($price) ? (int) $price : null;
+            $product->sale_price = is_numeric($sale) ? (int) $sale : null;
+            $product->is_soldout = (trim((string) $soldout) === '1');
+            if (trim((string) $image) !== '') { $product->main_image = trim((string) $image); }
+            if (! $product->slug) {
+                $product->slug = Str::limit(Str::slug($name) ?: 'p'.Str::random(6), 120, '');
+            }
+            $product->save();
+            if ($catId) { $product->categories()->syncWithoutDetaching([$catId]); }
+
+            $isNew ? $created++ : $updated++;
+        }
+        fclose($fh);
+
+        return redirect()->route('manage.products.index')
+            ->with('status', "엑셀 반영 완료 — 신규 {$created}건, 수정 {$updated}건".($skipped ? ", 건너뜀 {$skipped}건" : ''));
+    }
+
     // ---- helpers ----
     private function authorizeOwner(Product $product): void
     {

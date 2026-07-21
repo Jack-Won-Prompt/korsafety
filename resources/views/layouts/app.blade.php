@@ -15,7 +15,7 @@
 <body>
 <div class="topbar">
     <div class="wrap">
-        <div class="tb-left"><span class="dot"></span> 전 상품 안전인증(KCs) 정품 · 당일출고</div>
+        <div class="tb-left"><span class="dot"></span> <b style="letter-spacing:.06em;color:#fff">Safe Work, Safe Life</b> — 현장의 안전과 위생을 한국안전이 함께합니다</div>
         <div class="tb-right">
             <a href="{{ route('home') }}">고객센터 1588-0000</a>
             <a href="#">비회원 주문조회</a>

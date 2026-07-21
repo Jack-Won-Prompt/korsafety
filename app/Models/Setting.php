@@ -16,7 +16,8 @@ class Setting extends Model
 
     /** Default values for known settings. */
     public const DEFAULTS = [
-        'home_show_categories' => '0', // 메인 카테고리 영역 표시 (기본: 숨김)
+        'home_show_categories' => '0',    // 메인 카테고리 영역 표시 (기본: 숨김)
+        'price_display_mode'   => 'ask',  // 가격 표시 방식: 'ask'=가격 문의 / 'price'=제품 가격 노출
     ];
 
     public static function get(string $key, $default = null)

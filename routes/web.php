@@ -132,6 +132,9 @@ Route::prefix('purchaser')->middleware('role:purchaser')->group(function () {
 // 공통 상품/주문 관리 (본사 + 판매점, 각자 자기 스토어로 스코프)
 Route::prefix('manage')->middleware('role:hq_admin,seller')->group(function () {
     Route::get('products', [ManageProduct::class, 'index'])->name('manage.products.index');
+    Route::get('products/export', [ManageProduct::class, 'exportCsv'])->name('manage.products.export');
+    Route::get('products/import/template', [ManageProduct::class, 'importTemplate'])->name('manage.products.import.template');
+    Route::post('products/import', [ManageProduct::class, 'importCsv'])->name('manage.products.import');
     Route::get('products/create', [ManageProduct::class, 'create'])->name('manage.products.create');
     Route::post('products', [ManageProduct::class, 'store'])->name('manage.products.store');
     Route::get('products/{product}/edit', [ManageProduct::class, 'edit'])->name('manage.products.edit');

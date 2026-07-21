@@ -3,10 +3,24 @@
 @section('page', '상품 관리')
 @section('crumb', '내 스토어 상품 등록 · 수정')
 @section('actions')
+    <a href="{{ route('manage.products.export') }}" class="btn btn-sm">⭳ 엑셀 다운로드</a>
+    <button type="button" class="btn btn-sm" onclick="document.getElementById('imp-box').hidden=!document.getElementById('imp-box').hidden">⭱ 엑셀 업로드</button>
     <a href="{{ route('manage.products.create') }}" class="btn btn-accent btn-sm">+ 상품 등록</a>
 @endsection
 
 @section('content')
+<div id="imp-box" class="panel" hidden>
+    <div class="panel-b">
+        <form action="{{ route('manage.products.import') }}" method="post" enctype="multipart/form-data" style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+            @csrf
+            <div style="font-weight:700;font-size:14px">엑셀(CSV) 업로드</div>
+            <input type="file" name="file" accept=".csv,text/csv" required class="input" style="max-width:320px">
+            <button class="btn btn-accent btn-sm" type="submit">반영하기</button>
+            <a href="{{ route('manage.products.import.template') }}" class="btn btn-sm">빈 양식 받기</a>
+            <span class="t-sub" style="flex-basis:100%;margin-top:4px">‘상품ID’가 있으면 수정, 비어 있으면 신규 등록됩니다. 카테고리는 이름이 일치할 때 연결됩니다. UTF-8 CSV 형식.</span>
+        </form>
+    </div>
+</div>
 <div class="panel">
     <div class="panel-h">
         <div><h2>내 상품</h2><div class="sub">총 {{ number_format($products->total()) }}개</div></div>

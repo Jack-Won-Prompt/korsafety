@@ -28,13 +28,13 @@
         @if($product->brand)<div class="p-brand">{{ $product->brand }}</div>@else<div class="p-brand"></div>@endif
         <a href="{{ route('product.show', $product) }}" class="p-name">{{ $product->name }}</a>
         <div class="p-price">
-            @if($final)
+            @if(\App\Models\Setting::get('price_display_mode') === 'price' && $final)
                 <span class="now">{{ number_format($final) }}<span class="won">원</span></span>
                 @if($product->has_discount)
                     <span class="was">{{ number_format($product->price) }}원</span>
                 @endif
             @else
-                <span class="ask">가격문의</span>
+                <span class="ask">가격 문의</span>
             @endif
         </div>
     </div>

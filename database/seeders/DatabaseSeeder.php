@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             AgentSeeder::class,        // 협력사 + 거래처 + 커미션 주문
             PurchaserSeeder::class,    // 구매대행자 + 구매자 + 캐쉬백 주문
             YkSeeder::class,           // 유한킴벌리 카테고리 + 상품
+            CategoryUpdateSeeder::class, // 최종 9개 카테고리 명칭·순서 정리(clean-safe 병합)
         ]);
     }
 }

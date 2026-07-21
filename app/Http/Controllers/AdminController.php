@@ -239,13 +239,17 @@ class AdminController extends Controller
     /** 설정 */
     public function settings()
     {
-        $settings = ['home_show_categories' => Setting::bool('home_show_categories')];
+        $settings = [
+            'home_show_categories' => Setting::bool('home_show_categories'),
+            'price_display_mode'   => Setting::get('price_display_mode'),
+        ];
         return view('admin.settings', compact('settings'));
     }
 
     public function updateSettings(Request $request)
     {
         Setting::put('home_show_categories', $request->boolean('home_show_categories') ? '1' : '0');
+        Setting::put('price_display_mode', $request->input('price_display_mode') === 'price' ? 'price' : 'ask');
         return redirect()->route('admin.settings')->with('status', '설정이 저장되었습니다.');
     }
 }
