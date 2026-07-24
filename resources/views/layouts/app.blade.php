@@ -75,12 +75,19 @@
             </div>
         </div>
     </div>
-    <nav class="catnav">
+    <nav class="catnav {{ ($maintenanceOn ?? false) ? 'is-locked' : '' }}">
         <div class="wrap">
-            <a href="{{ route('home') }}" class="all">전체 카테고리</a>
-            @foreach($navCategories as $cat)
-                <a href="{{ route('category.show', $cat) }}" class="{{ (isset($category) && $category->id === $cat->id) ? 'active' : '' }}">{{ $cat->name }}</a>
-            @endforeach
+            @if($maintenanceOn ?? false)
+                <span class="all disabled" aria-disabled="true">전체 카테고리</span>
+                @foreach($navCategories as $cat)
+                    <span class="disabled" aria-disabled="true" title="유지보수 중입니다">{{ $cat->name }}</span>
+                @endforeach
+            @else
+                <a href="{{ route('home') }}" class="all">전체 카테고리</a>
+                @foreach($navCategories as $cat)
+                    <a href="{{ route('category.show', $cat) }}" class="{{ (isset($category) && $category->id === $cat->id) ? 'active' : '' }}">{{ $cat->name }}</a>
+                @endforeach
+            @endif
         </div>
     </nav>
 </header>
@@ -99,7 +106,11 @@
             <div class="fcol">
                 <h4>쇼핑</h4>
                 @foreach($navCategories->take(6) as $cat)
-                    <a href="{{ route('category.show', $cat) }}">{{ $cat->name }}</a>
+                    @if($maintenanceOn ?? false)
+                        <span class="disabled" aria-disabled="true">{{ $cat->name }}</span>
+                    @else
+                        <a href="{{ route('category.show', $cat) }}">{{ $cat->name }}</a>
+                    @endif
                 @endforeach
             </div>
             <div class="fcol">
@@ -131,7 +142,11 @@
     <div class="panel">
         <a href="{{ route('home') }}" style="font-weight:900;font-size:18px;border:0">전체 카테고리</a>
         @foreach($navCategories as $cat)
-            <a href="{{ route('category.show', $cat) }}">{{ $cat->name }}</a>
+            @if($maintenanceOn ?? false)
+                <span class="disabled" aria-disabled="true">{{ $cat->name }}</span>
+            @else
+                <a href="{{ route('category.show', $cat) }}">{{ $cat->name }}</a>
+            @endif
         @endforeach
         <a href="{{ route('cart.index') }}">장바구니</a>
         @auth

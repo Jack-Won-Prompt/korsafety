@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Category;
+use App\Models\Setting;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -30,6 +31,8 @@ class AppServiceProvider extends ServiceProvider
             }
             $view->with('navCategories', $cats);
             $view->with('cartCount', array_sum(session()->get('cart', [])));
+            // 유지보수 모드: 카테고리 링크 등을 비활성 표시하는 데 사용
+            $view->with('maintenanceOn', Setting::bool('maintenance_mode'));
         });
     }
 }
