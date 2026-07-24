@@ -70,7 +70,8 @@
         </div>
         <div class="lineup-grid">
             @foreach($lineup as $row)
-                <a href="{{ route('category.show', $row['slug']) }}" class="lineup-card">
+                @php $locked = $maintenanceOn ?? false; @endphp
+                <{{ $locked ? 'div' : 'a' }} @if(!$locked)href="{{ route('category.show', $row['slug']) }}"@endif class="lineup-card {{ $locked ? 'disabled' : '' }}" @if($locked)aria-disabled="true" title="유지보수 중입니다"@endif>
                     <div class="lu-thumb">
                         @if(!empty($row['image']))
                             <img src="{{ asset($row['image']) }}" alt="{{ $row['title'] }}" loading="lazy" onerror="this.style.visibility='hidden'">
@@ -83,7 +84,7 @@
                         <p class="lu-items">{{ $row['items'] }}</p>
                         <div class="lu-brands">{{ $row['brands'] }}</div>
                     </div>
-                </a>
+                </{{ $locked ? 'div' : 'a' }}>
             @endforeach
         </div>
     </section>
