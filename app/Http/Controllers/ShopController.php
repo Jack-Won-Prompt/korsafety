@@ -41,6 +41,14 @@ class ShopController extends Controller
 
     public function home()
     {
+        // 유지보수 모드: 상단 카테고리 아래는 안내 문구 섹션만 노출
+        if (Setting::bool('maintenance_mode')) {
+            return view('shop.home', [
+                'maintenance' => true,
+                'maintenanceMessage' => Setting::get('maintenance_message'),
+            ]);
+        }
+
         $categories = Category::orderBy('sort')->withCount('products')->get();
 
         $best = Product::query()
@@ -66,7 +74,8 @@ class ShopController extends Controller
 
         $showCategories = Setting::bool('home_show_categories');
 
-        return view('shop.home', compact('categories', 'best', 'newIn', 'showcase', 'showCategories'));
+        return view('shop.home', compact('categories', 'best', 'newIn', 'showcase', 'showCategories')
+            + ['maintenance' => false, 'maintenanceMessage' => null]);
     }
 
     public function category(Request $request, Category $category)

@@ -17,6 +17,26 @@
 @endphp
 
 @section('content')
+@if($maintenance ?? false)
+<section class="maint">
+    <div class="wrap">
+        <div class="maint-box">
+            <span class="maint-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14.7 6.3a4 4 0 0 1-5 5L4 17v3h3l5.7-5.7a4 4 0 0 1 5-5l1.6-1.6-2.9-2.9z"/>
+                </svg>
+            </span>
+            <div class="maint-k">SERVICE PREPARING</div>
+            <h2>{{ $maintenanceMessage ?: '더 좋은 서비스를 위해서 준비중에 있습니다.' }}</h2>
+            <p>불편을 드려 죄송합니다. 빠른 시일 내에 더 나은 모습으로 찾아뵙겠습니다.</p>
+            <div class="maint-contact">
+                <a href="tel:02-2273-9533" class="btn btn-accent">☎ 02-2273-9533</a>
+                <a href="{{ route('about') }}" class="btn btn-ghost">회사소개 보기</a>
+            </div>
+        </div>
+    </div>
+</section>
+@else
 @php
     $heroSlides = [
         ['img'=>'/shop/img/4568/photo.jpg','eyebrow'=>'PROFESSIONAL WORKWEAR','title'=>'현장을 지키는<br><em>프로의 선택</em>','sub'=>'고시인성 워크웨어로 안전과 스타일을 동시에. 검증된 브랜드만 담았습니다.','cta'=>'워크웨어 보기','link'=>route('category.show','workwear')],
@@ -147,4 +167,5 @@
         </div>
     </div>
 </section>
+@endif
 @endsection

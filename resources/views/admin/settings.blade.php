@@ -40,6 +40,29 @@
         </div>
     </div>
 
+    <div class="panel">
+        <div class="panel-h"><div><h2>유지보수 모드</h2></div></div>
+        <div class="panel-b">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+                <div>
+                    <div style="font-weight:700;font-size:15px">유지보수 모드 사용</div>
+                    <div class="hint" style="margin-top:6px">체크하면 메인 화면의 상단 카테고리 아래 영역이 안내 문구 섹션으로 대체됩니다. (헤더·카테고리 메뉴·푸터는 그대로 노출)</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" name="maintenance_mode" value="1" {{ $settings['maintenance_mode'] ? 'checked' : '' }}>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div style="margin-top:18px">
+                <label style="font-weight:700;font-size:14px;display:block;margin-bottom:8px">안내 문구</label>
+                <input class="input" type="text" name="maintenance_message" maxlength="200"
+                       value="{{ old('maintenance_message', $settings['maintenance_message']) }}"
+                       placeholder="더 좋은 서비스를 위해서 준비중에 있습니다.">
+                <div class="hint" style="margin-top:6px">비워 두면 기본 문구가 사용됩니다.</div>
+            </div>
+        </div>
+    </div>
+
     <button class="btn btn-accent" type="submit">설정 저장</button>
 </form>
 @endsection

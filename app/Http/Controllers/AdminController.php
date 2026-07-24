@@ -242,14 +242,20 @@ class AdminController extends Controller
         $settings = [
             'home_show_categories' => Setting::bool('home_show_categories'),
             'price_display_mode'   => Setting::get('price_display_mode'),
+            'maintenance_mode'     => Setting::bool('maintenance_mode'),
+            'maintenance_message'  => Setting::get('maintenance_message'),
         ];
         return view('admin.settings', compact('settings'));
     }
 
     public function updateSettings(Request $request)
     {
+        $request->validate(['maintenance_message' => 'nullable|string|max:200'], [], ['maintenance_message' => '안내 문구']);
+
         Setting::put('home_show_categories', $request->boolean('home_show_categories') ? '1' : '0');
         Setting::put('price_display_mode', $request->input('price_display_mode') === 'price' ? 'price' : 'ask');
+        Setting::put('maintenance_mode', $request->boolean('maintenance_mode') ? '1' : '0');
+        Setting::put('maintenance_message', trim((string) $request->input('maintenance_message')) ?: Setting::DEFAULTS['maintenance_message']);
         return redirect()->route('admin.settings')->with('status', '설정이 저장되었습니다.');
     }
 }
