@@ -21,7 +21,7 @@
 
         <div class="form-row">
             <label>이메일</label>
-            <input class="input" type="email" name="email" value="{{ old('email') }}" autofocus placeholder="admin@korsafety.kr">
+            <input class="input" type="email" name="email" value="{{ old('email') }}" autofocus placeholder="이메일 주소">
         </div>
         <div class="form-row">
             <label>비밀번호</label>
@@ -37,14 +37,6 @@
             <a href="{{ route('partner.apply') }}">입점 신청</a>
             <a href="{{ route('agent.apply') }}">협력사 신청</a>
             <a href="{{ route('purchaser.apply') }}">구매 대행자 신청 →</a>
-        </div>
-
-        <div class="demo">
-            <b>데모 계정 (비밀번호 공통: 1234)</b><br>
-            본사 관리자 — admin@korsafety.kr<br>
-            판매점 — delta@partner.kr / workpro@partner.kr<br>
-            협력사 — agent@partner.kr<br>
-            구매 대행자 — buyer@partner.kr
         </div>
     </form>
 </div>
