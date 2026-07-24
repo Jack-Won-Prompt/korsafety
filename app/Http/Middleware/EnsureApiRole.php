@@ -31,6 +31,10 @@ class EnsureApiRole
             return response()->json(['message' => '협력사 승인이 완료되지 않았거나 정지된 계정입니다.'], 403);
         }
 
+        if ($user->role === 'purchaser' && (! $user->purchaser || $user->purchaser->status !== 'approved')) {
+            return response()->json(['message' => '구매처 승인이 완료되지 않았거나 정지된 계정입니다.'], 403);
+        }
+
         return $next($request);
     }
 }

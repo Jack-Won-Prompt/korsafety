@@ -55,6 +55,9 @@ class AuthController extends Controller
         if ($user->role === 'agent' && (! $user->agent || $user->agent->status !== 'approved')) {
             throw ValidationException::withMessages(['email' => ['협력사 승인이 완료되지 않았거나 정지된 계정입니다.']]);
         }
+        if ($user->role === 'purchaser' && (! $user->purchaser || $user->purchaser->status !== 'approved')) {
+            throw ValidationException::withMessages(['email' => ['구매처 승인이 완료되지 않았거나 정지된 계정입니다.']]);
+        }
 
         return $this->tokenResponse($user, $request);
     }
@@ -93,6 +96,7 @@ class AuthController extends Controller
             'role' => $user->role,
             'seller' => $user->seller ? ['id' => $user->seller->id, 'name' => $user->seller->name, 'is_hq' => (bool) $user->seller->is_hq] : null,
             'agent' => $user->agent ? ['id' => $user->agent->id, 'name' => $user->agent->name, 'commission_rate' => $user->agent->commission_rate] : null,
+            'purchaser' => $user->purchaser ? ['id' => $user->purchaser->id, 'name' => $user->purchaser->name, 'cashback_rate' => $user->purchaser->cashback_rate] : null,
         ];
     }
 }
