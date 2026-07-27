@@ -571,3 +571,76 @@ h1,h2,h3,h4 { margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height:
   transform: translateX(-100%); transition: .25s; overflow-y: auto; }
 .drawer.open .panel { transform: translateX(0); }
 .drawer .panel a { display: block; padding: 13px 8px; font-weight: 600; border-bottom: 1px solid var(--line-2); }
+
+/* ============ 실시간 채팅 문의 위젯 ============ */
+.ks-chat { position: fixed; right: 22px; bottom: 22px; z-index: 1200; font-family: var(--font); }
+.ks-chat-fab { display: flex; align-items: center; gap: 8px; height: 54px; padding: 0 22px 0 18px;
+  border: 0; border-radius: 999px; background: var(--accent); color: #fff; cursor: pointer;
+  box-shadow: 0 10px 30px rgba(255,87,34,.38); font-weight: 800; font-size: 15px;
+  transition: transform .18s, box-shadow .18s, background .18s; }
+.ks-chat-fab:hover { background: var(--accent-d); transform: translateY(-2px); box-shadow: 0 14px 34px rgba(255,87,34,.46); }
+.ks-chat-fab svg { width: 24px; height: 24px; }
+.ks-chat-fab .ic-close { display: none; }
+.ks-chat.open .ks-chat-fab .ic-chat { display: none; }
+.ks-chat.open .ks-chat-fab .ic-close { display: block; }
+.ks-chat.open .ks-chat-fab .ks-chat-label { display: none; }
+.ks-chat.open .ks-chat-fab { padding: 0; width: 54px; justify-content: center; }
+
+.ks-chat-panel { position: absolute; right: 0; bottom: 68px; width: 360px; max-width: calc(100vw - 32px);
+  height: 540px; max-height: calc(100vh - 120px); background: #fff; border: 1px solid var(--line);
+  border-radius: 20px; box-shadow: 0 24px 60px rgba(18,21,27,.22); display: flex; flex-direction: column;
+  overflow: hidden; animation: ksPop .18s ease; }
+@keyframes ksPop { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
+
+.ks-chat-head { display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px; background: var(--ink); color: #fff; }
+.ks-chat-title { font-size: 15.5px; font-weight: 800; }
+.ks-chat-sub { font-size: 12px; color: #b7bdc8; margin-top: 2px; }
+.ks-chat-min { background: none; border: 0; color: #cfd3db; cursor: pointer; padding: 4px; }
+.ks-chat-min svg { width: 22px; height: 22px; }
+
+/* 등록 폼 */
+.ks-chat-reg { padding: 22px 20px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.ks-chat-intro { font-size: 13.5px; color: var(--ink-2); line-height: 1.6; margin: 2px 0 6px; }
+.ks-chat-reg label { font-size: 12.5px; font-weight: 700; color: var(--ink-2); display: flex; flex-direction: column; gap: 6px; }
+.ks-chat-reg label span { color: var(--accent); }
+.ks-chat-reg label .opt { color: var(--muted); font-weight: 600; }
+.ks-chat-reg input, .ks-chat-reg textarea { width: 100%; border: 1.5px solid var(--line); border-radius: 10px;
+  padding: 11px 13px; font-size: 14px; font-family: inherit; background: var(--bg-soft); transition: .15s; box-sizing: border-box; }
+.ks-chat-reg input:focus, .ks-chat-reg textarea:focus { outline: none; border-color: var(--ink); background: #fff; }
+.ks-chat-reg textarea { resize: none; }
+.ks-chat-submit { height: 46px; border: 0; border-radius: 11px; background: var(--accent); color: #fff;
+  font-weight: 800; font-size: 15px; cursor: pointer; margin-top: 4px; transition: background .15s; }
+.ks-chat-submit:hover { background: var(--accent-d); }
+.ks-chat-submit:disabled { opacity: .6; cursor: default; }
+.ks-chat-priv { font-size: 11px; color: var(--muted); margin: 2px 0 0; }
+.ks-chat-err { background: #fdecea; color: #b3261e; border: 1px solid #f5c6c2; border-radius: 9px;
+  padding: 9px 12px; font-size: 12.5px; }
+
+/* 대화 */
+.ks-chat-thread { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.ks-chat-msgs { flex: 1; overflow-y: auto; padding: 18px 16px; display: flex; flex-direction: column; gap: 10px;
+  background: var(--bg-soft); }
+.ks-msg { display: flex; flex-direction: column; max-width: 82%; }
+.ks-msg.out { align-self: flex-end; align-items: flex-end; }
+.ks-msg.in { align-self: flex-start; align-items: flex-start; }
+.ks-bubble { padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-break: break-word; }
+.ks-msg.out .ks-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 5px; }
+.ks-msg.in .ks-bubble { background: #fff; color: var(--ink); border: 1px solid var(--line); border-bottom-left-radius: 5px; }
+.ks-time { font-size: 10.5px; color: var(--muted); margin-top: 4px; padding: 0 4px; }
+
+.ks-chat-send { display: flex; align-items: flex-end; gap: 8px; padding: 12px; border-top: 1px solid var(--line); background: #fff; }
+.ks-chat-send textarea { flex: 1; border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 14px;
+  font-size: 14px; font-family: inherit; resize: none; max-height: 96px; background: var(--bg-soft); transition: .15s; }
+.ks-chat-send textarea:focus { outline: none; border-color: var(--ink); background: #fff; }
+.ks-chat-send button { flex: 0 0 44px; width: 44px; height: 44px; border: 0; border-radius: 12px;
+  background: var(--accent); color: #fff; cursor: pointer; display: grid; place-items: center; transition: background .15s; }
+.ks-chat-send button:hover { background: var(--accent-d); }
+.ks-chat-send button svg { width: 20px; height: 20px; }
+
+@media (max-width: 480px) {
+  .ks-chat { right: 14px; bottom: 14px; }
+  .ks-chat-panel { bottom: 64px; height: calc(100vh - 96px); }
+  .ks-chat-fab .ks-chat-label { display: none; }
+  .ks-chat-fab { padding: 0; width: 54px; justify-content: center; }
+}

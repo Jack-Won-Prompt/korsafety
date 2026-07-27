@@ -7,8 +7,10 @@ use App\Http\Controllers\Agent\OrderController as AgentOrder;
 use App\Http\Controllers\Purchaser\BuyerController as PurchaserBuyer;
 use App\Http\Controllers\Purchaser\DashboardController as PurchaserDashboard;
 use App\Http\Controllers\Purchaser\OrderController as PurchaserOrder;
+use App\Http\Controllers\Admin\InquiryController as AdminInquiry;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerAuthController;
+use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\Manage\AuthController as ManageAuth;
 use App\Http\Controllers\Manage\OrderController as ManageOrder;
@@ -29,6 +31,13 @@ Route::delete('/cart/remove/{product}', [CartController::class, 'remove'])->name
 
 Route::get('/category/{category}', [ShopController::class, 'category'])->name('category.show');
 Route::get('/product/{product}', [ShopController::class, 'product'])->name('product.show');
+
+// 실시간 채팅 문의 (고객·비회원) — 남용 방지 throttle
+Route::middleware('throttle:60,1')->group(function () {
+    Route::post('/inquiry/start', [InquiryController::class, 'start'])->name('inquiry.start');
+    Route::post('/inquiry/{token}/message', [InquiryController::class, 'message'])->name('inquiry.message');
+    Route::get('/inquiry/{token}/poll', [InquiryController::class, 'poll'])->name('inquiry.poll');
+});
 
 // 고객 로그인 / 회원가입
 Route::get('/login', [CustomerAuthController::class, 'showLogin'])->name('login');
@@ -84,6 +93,14 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
     Route::get('login-logs', [AdminController::class, 'loginLogs'])->name('admin.login-logs');
     Route::get('settings', [AdminController::class, 'settings'])->name('admin.settings');
     Route::post('settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
+
+    // 실시간 채팅 문의 관리
+    Route::get('inquiries', [AdminInquiry::class, 'index'])->name('admin.inquiries');
+    Route::get('inquiries/list', [AdminInquiry::class, 'listData'])->name('admin.inquiries.list');
+    Route::get('inquiries/{inquiry}', [AdminInquiry::class, 'show'])->name('admin.inquiries.show');
+    Route::get('inquiries/{inquiry}/poll', [AdminInquiry::class, 'poll'])->name('admin.inquiries.poll');
+    Route::post('inquiries/{inquiry}/reply', [AdminInquiry::class, 'reply'])->name('admin.inquiries.reply');
+    Route::post('inquiries/{inquiry}/toggle', [AdminInquiry::class, 'toggle'])->name('admin.inquiries.toggle');
 });
 
 // 판매점 콘솔

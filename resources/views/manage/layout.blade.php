@@ -7,6 +7,10 @@
     $consoleName = $isHq ? 'HQ CONSOLE' : ($isAgent ? 'AGENT CONSOLE' : ($isPurchaser ? 'PURCHASE CONSOLE' : 'SELLER CONSOLE'));
     $roleName = $isHq ? '본사 (Super Admin)' : ($isAgent ? ($u->agent->name ?? '협력사') : ($isPurchaser ? ($u->purchaser->name ?? '구매 대행자') : ($store->name ?? '판매점')));
     $roleDesc = $isHq ? '전체 관리 권한' : ($isAgent ? '영업대행 협력사' : ($isPurchaser ? '구매대행자' : '입점 판매점'));
+    $inquiryUnread = 0;
+    if ($isHq) {
+        try { $inquiryUnread = (int) \App\Models\Inquiry::sum('unread_admin'); } catch (\Throwable $e) {}
+    }
 @endphp
 <!DOCTYPE html>
 <html lang="ko">
@@ -56,6 +60,7 @@
                 <a href="{{ route('admin.cashbacks') }}" class="{{ request()->routeIs('admin.cashbacks') ? 'active' : '' }}">{!! $ic($navCoin) !!} 캐쉬백 정산</a>
                 <a href="{{ route('manage.products.index') }}" class="{{ request()->routeIs('manage.products.*') ? 'active' : '' }}">{!! $ic($navBox) !!} 상품 관리</a>
                 <a href="{{ route('manage.orders') }}" class="{{ request()->routeIs('manage.orders') ? 'active' : '' }}">{!! $ic($navBag) !!} 주문 내역</a>
+                <a href="{{ route('admin.inquiries') }}" class="{{ request()->routeIs('admin.inquiries*') ? 'active' : '' }}">{!! $ic('<path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.7a8.5 8.5 0 0 1-.9-3.8A8.38 8.38 0 0 1 12.5 3 8.38 8.38 0 0 1 21 11.5z"/>') !!} 실시간 문의 @if($inquiryUnread)<span class="nav-badge">{{ $inquiryUnread }}</span>@endif</a>
                 <div class="grp">시스템</div>
                 <a href="{{ route('admin.login-logs') }}" class="{{ request()->routeIs('admin.login-logs') ? 'active' : '' }}">{!! $ic('<path d="M12 8v4l3 2"/><circle cx="12" cy="12" r="9"/>') !!} 로그인 이력</a>
                 <a href="{{ route('admin.settings') }}" class="{{ request()->routeIs('admin.settings') ? 'active' : '' }}">{!! $ic('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-2.82 1.17V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15H4a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 6 9.4l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 11 4.6V4a2 2 0 1 1 4 0v.09c.66.26 1.4.05 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9H21a2 2 0 1 1 0 4h-.09c-.32.66-.28 1.4.49 2z"/>') !!} 사이트 설정</a>

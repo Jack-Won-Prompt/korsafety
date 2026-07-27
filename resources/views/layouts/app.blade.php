@@ -164,6 +164,8 @@
     <span class="msg"></span>
 </div>
 
+@include('partials.chat-widget')
+
 <script src="{{ asset('js/shop.js') }}?v={{ @filemtime(public_path('js/shop.js')) }}"></script>
 @if(session('welcome'))
 <script>document.addEventListener('DOMContentLoaded',function(){var t=document.getElementById('toast');if(!t)return;t.querySelector('.msg').textContent=@json(session('welcome'));t.classList.add('show');setTimeout(function(){t.classList.remove('show');},3200);});</script>
