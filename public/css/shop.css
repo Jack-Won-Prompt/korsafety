@@ -588,8 +588,9 @@ h1,h2,h3,h4 { margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height:
 
 .ks-chat-panel { position: absolute; right: 0; bottom: 68px; width: 360px; max-width: calc(100vw - 32px);
   height: 540px; max-height: calc(100vh - 120px); background: #fff; border: 1px solid var(--line);
-  border-radius: 20px; box-shadow: 0 24px 60px rgba(18,21,27,.22); display: flex; flex-direction: column;
-  overflow: hidden; animation: ksPop .18s ease; }
+  border-radius: 20px; box-shadow: 0 24px 60px rgba(18,21,27,.22); display: none; flex-direction: column;
+  overflow: hidden; }
+.ks-chat.open .ks-chat-panel { display: flex; animation: ksPop .18s ease; }
 @keyframes ksPop { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
 
 .ks-chat-head { display: flex; align-items: center; justify-content: space-between;
