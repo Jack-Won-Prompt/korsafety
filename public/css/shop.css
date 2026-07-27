@@ -601,7 +601,8 @@ h1,h2,h3,h4 { margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height:
 .ks-chat-min svg { width: 22px; height: 22px; }
 
 /* 등록 폼 */
-.ks-chat-reg { padding: 22px 20px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.ks-chat-reg { padding: 22px 20px; flex-direction: column; gap: 12px; overflow-y: auto; }
+.ks-chat-reg:not([hidden]) { display: flex; }
 .ks-chat-intro { font-size: 13.5px; color: var(--ink-2); line-height: 1.6; margin: 2px 0 6px; }
 .ks-chat-reg label { font-size: 12.5px; font-weight: 700; color: var(--ink-2); display: flex; flex-direction: column; gap: 6px; }
 .ks-chat-reg label span { color: var(--accent); }
@@ -619,7 +620,8 @@ h1,h2,h3,h4 { margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height:
   padding: 9px 12px; font-size: 12.5px; }
 
 /* 대화 */
-.ks-chat-thread { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.ks-chat-thread { flex-direction: column; flex: 1; min-height: 0; }
+.ks-chat-thread:not([hidden]) { display: flex; }
 .ks-chat-msgs { flex: 1; overflow-y: auto; padding: 18px 16px; display: flex; flex-direction: column; gap: 10px;
   background: var(--bg-soft); }
 .ks-msg { display: flex; flex-direction: column; max-width: 82%; }
