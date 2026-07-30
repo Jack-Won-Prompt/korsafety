@@ -8,6 +8,9 @@ use App\Http\Controllers\Purchaser\BuyerController as PurchaserBuyer;
 use App\Http\Controllers\Purchaser\DashboardController as PurchaserDashboard;
 use App\Http\Controllers\Purchaser\OrderController as PurchaserOrder;
 use App\Http\Controllers\Admin\InquiryController as AdminInquiry;
+use App\Http\Controllers\Admin\OrderController as AdminOrder;
+use App\Http\Controllers\Admin\OrderStatementController as AdminStatement;
+use App\Http\Controllers\Admin\TaxInvoiceController as AdminTaxInvoice;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\InquiryController;
@@ -93,6 +96,18 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
     Route::get('login-logs', [AdminController::class, 'loginLogs'])->name('admin.login-logs');
     Route::get('settings', [AdminController::class, 'settings'])->name('admin.settings');
     Route::post('settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
+
+    // 주문 관리 (HQ) + 거래명세서 · 세금계산서
+    Route::get('orders', [AdminOrder::class, 'index'])->name('admin.orders.index');
+    Route::get('orders/{order}', [AdminOrder::class, 'show'])->name('admin.orders.show');
+    Route::get('orders/{order}/statement/preview', [AdminStatement::class, 'preview'])->name('admin.orders.statement.preview');
+    Route::get('orders/{order}/statement/print', [AdminStatement::class, 'print'])->name('admin.orders.statement.print');
+    Route::get('orders/{order}/statement/download', [AdminStatement::class, 'download'])->name('admin.orders.statement.download');
+    Route::post('orders/{order}/statement/send', [AdminStatement::class, 'send'])->name('admin.orders.statement.send');
+    Route::post('orders/{order}/tax-invoice', [AdminTaxInvoice::class, 'issue'])->name('admin.orders.taxinvoice');
+    Route::get('tax-invoices', [AdminTaxInvoice::class, 'index'])->name('admin.taxinvoice.index');
+    Route::delete('tax-invoices/{taxInvoice}', [AdminTaxInvoice::class, 'cancel'])->name('admin.taxinvoice.cancel');
+    Route::get('tax-invoices/{taxInvoice}/popup', [AdminTaxInvoice::class, 'popup'])->name('admin.taxinvoice.popup');
 
     // 실시간 채팅 문의 관리
     Route::get('inquiries', [AdminInquiry::class, 'index'])->name('admin.inquiries');

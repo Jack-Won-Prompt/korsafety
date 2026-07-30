@@ -43,6 +43,16 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function statements(): HasMany
+    {
+        return $this->hasMany(OrderStatement::class)->latest('id');
+    }
+
+    public function taxInvoices(): HasMany
+    {
+        return $this->hasMany(TaxInvoice::class)->latest('id');
+    }
+
     public function agent(): BelongsTo
     {
         return $this->belongsTo(Agent::class);
