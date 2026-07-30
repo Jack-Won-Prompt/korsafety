@@ -17,18 +17,21 @@
     .c { text-align: center; } .r { text-align: right; }
     .agg th { background: #2f7d32; }
     .agg .qty { font-weight: bold; font-size: 13px; text-align: center; }
-    .ord { margin-top: 12px; page-break-inside: avoid; }
-    .ord-h { font-size: 12px; font-weight: bold; padding: 5px 0; border-bottom: 2px solid #333; margin-bottom: 4px; }
+    .ord { margin-top: 14px; page-break-inside: avoid; }
+    .ord-h { border-bottom: 2px solid #333; margin-bottom: 4px; }
+    .ord-h table { width: 100%; }
+    .ord-h td { border: 0; padding: 4px 0; vertical-align: middle; font-size: 12px; font-weight: bold; }
     .ord-h .no { color: #2f7d32; }
+    .ord-h .addr { font-weight: normal; color: #555; }
     .pick-c { width: 30px; text-align: center; }
     .pick-box { display: inline-block; width: 15px; height: 15px; border: 1.5px solid #333; }
     .bcode { height: 34px; display: block; }
     .bcode-c { width: 130px; text-align: center; }
     .bcode-c img { height: 30px; width: 120px; }
     .bcode-c .num { font-size: 9px; color: #444; letter-spacing: .5px; }
-    .ord-bc { float: right; text-align: center; }
-    .ord-bc img { height: 34px; width: 150px; }
-    .ord-bc .num { font-size: 9px; color: #444; }
+    .ord-bc { width: 158px; text-align: right; white-space: nowrap; }
+    .ord-bc img { height: 32px; width: 150px; display: inline-block; }
+    .ord-bc .num { font-size: 9px; color: #444; text-align: center; }
     .toolbar { position: sticky; top: 0; background: #12151b; color: #fff; padding: 12px 16px; margin: -20px -22px 16px; display: flex; gap: 10px; align-items: center; }
     .toolbar button { background: #ff5722; color: #fff; border: 0; border-radius: 8px; padding: 9px 18px; font-weight: 700; font-size: 13px; cursor: pointer; }
     .toolbar .x { background: #333; }
@@ -73,9 +76,16 @@
     @foreach($orders as $o)
         <div class="ord">
             <div class="ord-h">
-                <span class="ord-bc"><img src="{{ $orderBarcodes[$o->id] }}" alt=""><div class="num">{{ $o->order_no }}</div></span>
-                주문 <span class="no">{{ $o->order_no }}</span> · 수령인 {{ $o->receiver_name ?: $o->customer_name }} · {{ $o->customer_phone }}
-                @if($o->address1)<span style="font-weight:normal;color:#555"> / {{ trim(($o->address1?:'').' '.($o->address2?:'')) }}</span>@endif
+                <table>
+                    <tr>
+                        <td>주문 <span class="no">{{ $o->order_no }}</span> · 수령인 {{ $o->receiver_name ?: $o->customer_name }} · {{ $o->customer_phone }}
+                            @if($o->address1)<span class="addr"> / {{ trim(($o->address1?:'').' '.($o->address2?:'')) }}</span>@endif
+                        </td>
+                        @if(!empty($orderBarcodes[$o->id]))
+                        <td class="ord-bc"><img src="{{ $orderBarcodes[$o->id] }}" alt=""><div class="num">{{ $o->order_no }}</div></td>
+                        @endif
+                    </tr>
+                </table>
             </div>
             <table>
                 <thead><tr><th class="pick-c">✔</th><th style="width:34px">No</th><th>품목</th><th style="width:70px">수량</th></tr></thead>

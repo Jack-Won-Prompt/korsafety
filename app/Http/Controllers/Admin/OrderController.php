@@ -54,10 +54,22 @@ class OrderController extends Controller
             return back()->with('error', '선택된 주문이 없습니다.');
         }
 
-        $gen = new BarcodeGeneratorPNG();
-        $barcode = fn (string $value) => 'data:image/png;base64,'.base64_encode(
-            $gen->getBarcode($value, $gen::TYPE_CODE_128, 2, 42)
-        );
+        // 바코드 생성 (GD·패키지 미비 시에도 500 없이 바코드만 생략)
+        try {
+            $gen = new BarcodeGeneratorPNG();
+        } catch (\Throwable $e) {
+            $gen = null;
+        }
+        $barcode = function (string $value) use ($gen): ?string {
+            if (! $gen) {
+                return null;
+            }
+            try {
+                return 'data:image/png;base64,'.base64_encode($gen->getBarcode($value, $gen::TYPE_CODE_128, 2, 42));
+            } catch (\Throwable $e) {
+                return null;
+            }
+        };
 
         // 품목별 집계 (product_id 우선, 없으면 상품명)
         $agg = [];
