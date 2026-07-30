@@ -59,7 +59,7 @@
                 <div class="panel-h"><h2>대표 이미지</h2></div>
                 <div class="panel-b">
                     @if($product->main_image)
-                        <div class="up-thumb" style="width:100%;height:180px;margin-bottom:12px"><img src="{{ asset($product->main_image) }}" alt=""></div>
+                        <div class="up-thumb" style="width:100%;height:280px;margin-bottom:12px"><img src="{{ asset($product->main_image) }}" alt=""></div>
                         @if($editing)
                             <a href="{{ route('manage.products.image', $product) }}" class="btn btn-sm" style="width:100%;margin-bottom:10px">✎ 이미지 편집 (회전·밝기·대비·크롭)</a>
                         @endif
