@@ -89,7 +89,8 @@ class OrderController extends Controller
     {
         $query = $query ?: Order::withCount('items')->with(['statements', 'taxInvoices'])->latest('id');
 
-        $q = trim((string) $request->query('q', ''));
+        // input(): GET(목록) · POST(피킹 폼) 양쪽에서 필터 값을 읽는다
+        $q = trim((string) $request->input('q', ''));
         if ($q !== '') {
             $query->where(function ($w) use ($q) {
                 $w->where('order_no', 'like', "%$q%")
@@ -98,13 +99,13 @@ class OrderController extends Controller
                     ->orWhere('receiver_name', 'like', "%$q%");
             });
         }
-        if ($status = $request->query('status')) {
+        if ($status = $request->input('status')) {
             $query->where('status', $status);
         }
-        if ($from = $request->query('from')) {
+        if ($from = $request->input('from')) {
             $query->whereDate('created_at', '>=', $from);
         }
-        if ($to = $request->query('to')) {
+        if ($to = $request->input('to')) {
             $query->whereDate('created_at', '<=', $to);
         }
 
