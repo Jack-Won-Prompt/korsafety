@@ -7,9 +7,9 @@
 {{-- 검색 필터 --}}
 <div class="panel">
     <div class="panel-b">
-        <form method="get" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-            <input class="input" style="height:38px;width:220px" name="q" value="{{ $q }}" placeholder="주문번호·고객·수령인·연락처">
-            <select class="input" style="height:38px" name="status">
+        <form method="get" style="display:flex;flex-wrap:nowrap;gap:8px;align-items:center;overflow-x:auto">
+            <input class="input" style="height:38px;flex:1 1 160px;min-width:140px" name="q" value="{{ $q }}" placeholder="주문번호·고객·수령인·연락처">
+            <select class="input" style="height:38px;flex:0 0 auto" name="status">
                 <option value="">전체 상태</option>
                 @foreach(['pending'=>'결제대기','paid'=>'결제완료','shipped'=>'배송중','done'=>'배송완료','cancelled'=>'취소'] as $k=>$v)
                     <option value="{{ $k }}" @selected($status===$k)>{{ $v }}</option>
@@ -21,8 +21,8 @@
                 <span class="t-sub">~</span>
                 <input class="input" style="height:38px;width:150px" type="date" name="to" value="{{ $to }}">
             </div>
-            <button class="btn btn-sm btn-accent">검색</button>
-            <a href="{{ route('admin.orders.index') }}" class="btn btn-sm">초기화</a>
+            <button class="btn btn-sm btn-accent" style="flex:0 0 auto">검색</button>
+            <a href="{{ route('admin.orders.index') }}" class="btn btn-sm" style="flex:0 0 auto">초기화</a>
         </form>
     </div>
 </div>
