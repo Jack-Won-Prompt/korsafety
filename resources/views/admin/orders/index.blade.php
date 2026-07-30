@@ -15,10 +15,12 @@
                     <option value="{{ $k }}" @selected($status===$k)>{{ $v }}</option>
                 @endforeach
             </select>
-            <span class="t-sub">기간</span>
-            <input class="input" style="height:38px" type="date" name="from" value="{{ $from }}">
-            <span class="t-sub">~</span>
-            <input class="input" style="height:38px" type="date" name="to" value="{{ $to }}">
+            <div style="display:flex;align-items:center;gap:6px;flex:0 0 auto;flex-wrap:nowrap">
+                <span class="t-sub">기간</span>
+                <input class="input" style="height:38px;width:150px" type="date" name="from" value="{{ $from }}">
+                <span class="t-sub">~</span>
+                <input class="input" style="height:38px;width:150px" type="date" name="to" value="{{ $to }}">
+            </div>
             <button class="btn btn-sm btn-accent">검색</button>
             <a href="{{ route('admin.orders.index') }}" class="btn btn-sm">초기화</a>
         </form>
