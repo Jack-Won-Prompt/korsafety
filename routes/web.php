@@ -106,6 +106,7 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
 
     // 주문 관리 (HQ) + 거래명세서 · 세금계산서
     Route::get('orders', [AdminOrder::class, 'index'])->name('admin.orders.index');
+    Route::match(['get', 'post'], 'orders/picking', [AdminOrder::class, 'picking'])->name('admin.orders.picking');
     Route::get('orders/{order}', [AdminOrder::class, 'show'])->name('admin.orders.show');
     Route::get('orders/{order}/statement/preview', [AdminStatement::class, 'preview'])->name('admin.orders.statement.preview');
     Route::get('orders/{order}/statement/print', [AdminStatement::class, 'print'])->name('admin.orders.statement.print');
