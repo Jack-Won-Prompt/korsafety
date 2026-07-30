@@ -66,6 +66,11 @@ class User extends Authenticatable
         return $this->role === 'purchaser';
     }
 
+    public function isCustomer(): bool
+    {
+        return $this->role === 'customer' || $this->role === null;
+    }
+
     /** 한국어 비밀번호 재설정 메일 */
     public function sendPasswordResetNotification($token): void
     {

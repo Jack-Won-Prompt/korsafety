@@ -15,6 +15,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\Manage\AuthController as ManageAuth;
 use App\Http\Controllers\Manage\OrderController as ManageOrder;
 use App\Http\Controllers\Manage\PartnerController;
@@ -41,6 +42,12 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::post('/inquiry/{token}/message', [InquiryController::class, 'message'])->name('inquiry.message');
     Route::get('/inquiry/{token}/poll', [InquiryController::class, 'poll'])->name('inquiry.poll');
 });
+
+// 약관 · 개인정보처리방침 · 계정 삭제 (스토어 필수 페이지)
+Route::get('/terms', [PolicyController::class, 'terms'])->name('terms');
+Route::get('/privacy', [PolicyController::class, 'privacy'])->name('privacy');
+Route::get('/account/delete', [PolicyController::class, 'accountDeletion'])->name('account.delete');
+Route::delete('/account', [PolicyController::class, 'destroyAccount'])->middleware('auth')->name('account.destroy');
 
 // 고객 로그인 / 회원가입
 Route::get('/login', [CustomerAuthController::class, 'showLogin'])->name('login');

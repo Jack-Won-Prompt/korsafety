@@ -647,3 +647,32 @@ h1,h2,h3,h4 { margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height:
   .ks-chat-fab .ks-chat-label { display: none; }
   .ks-chat-fab { padding: 0; width: 54px; justify-content: center; }
 }
+
+/* ============ 약관·정책·계정삭제 페이지 ============ */
+.legal { max-width: 860px; margin: 0 auto; padding: 44px 24px 80px; }
+.legal-head { border-bottom: 2px solid var(--ink); padding-bottom: 20px; margin-bottom: 28px; }
+.legal-head .k { font-size: 12px; letter-spacing: .18em; font-weight: 800; color: var(--accent); }
+.legal-head h1 { font-size: 30px; margin: 10px 0 8px; letter-spacing: -.03em; }
+.legal-head .meta { font-size: 13px; color: var(--muted); }
+.legal h2 { font-size: 18px; margin: 34px 0 12px; padding-top: 6px; }
+.legal h3 { font-size: 15px; margin: 20px 0 8px; color: var(--ink-2); }
+.legal p, .legal li { font-size: 14.5px; line-height: 1.85; color: #33383f; }
+.legal ul, .legal ol { padding-left: 20px; margin: 8px 0; }
+.legal li { margin: 4px 0; }
+.legal .tbl { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13.5px; }
+.legal .tbl th, .legal .tbl td { border: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top; }
+.legal .tbl th { background: var(--bg-soft); font-weight: 700; white-space: nowrap; }
+.legal .note { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin: 16px 0; font-size: 13.5px; color: var(--ink-2); }
+.legal .steps { counter-reset: step; list-style: none; padding: 0; margin: 16px 0; }
+.legal .steps li { counter-increment: step; position: relative; padding: 12px 12px 12px 52px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px; }
+.legal .steps li::before { content: counter(step); position: absolute; left: 14px; top: 12px; width: 26px; height: 26px;
+  background: var(--ink); color: #fff; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+.del-box { border: 1.5px solid var(--danger); border-radius: 16px; padding: 24px; margin-top: 24px; background: #fff8f7; }
+.del-box h2 { margin-top: 0; color: var(--danger); }
+.del-box label { display: block; font-size: 13px; font-weight: 700; margin: 14px 0 6px; }
+.del-box input[type=password] { width: 100%; max-width: 320px; height: 46px; border: 1.5px solid var(--line);
+  border-radius: 10px; padding: 0 14px; font-size: 15px; background: #fff; }
+.del-box .chk { display: flex; align-items: flex-start; gap: 8px; margin: 16px 0; font-size: 13.5px; }
+.del-box .chk input { margin-top: 3px; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #b91c1c; }

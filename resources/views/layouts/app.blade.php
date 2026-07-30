@@ -114,13 +114,15 @@
                 @endforeach
             </div>
             <div class="fcol">
-                <h4>고객지원</h4>
-                <a href="#">공지사항</a><a href="#">자주 묻는 질문</a>
-                <a href="#">대량구매 문의</a><a href="#">교환/반품 안내</a>
+                <h4>고객지원 · 약관</h4>
+                <a href="{{ route('terms') }}">이용약관</a>
+                <a href="{{ route('privacy') }}"><b>개인정보처리방침</b></a>
+                <a href="{{ route('account.delete') }}">계정 삭제</a>
+                <a href="#">교환/반품 안내</a>
             </div>
             <div class="fcol">
                 <h4>회사 · 파트너</h4>
-                <a href="{{ route('about') }}">회사소개</a><a href="#">이용약관</a>
+                <a href="{{ route('about') }}">회사소개</a>
                 <a href="{{ route('partner.apply') }}">입점 신청</a>
                 <a href="{{ route('agent.apply') }}">협력사(영업대행) 신청</a>
                 <a href="{{ route('purchaser.apply') }}">구매 대행자 신청</a>
