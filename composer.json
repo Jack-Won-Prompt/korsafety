@@ -12,6 +12,7 @@
         "laravel/sanctum": "^4.3",
         "laravel/tinker": "^2.9",
         "linkhub/popbill": "^1.68",
+        "picqer/php-barcode-generator": "^3.2",
         "pusher/pusher-php-server": "^7.2"
     },
     "require-dev": {

@@ -22,6 +22,13 @@
     .ord-h .no { color: #2f7d32; }
     .pick-c { width: 30px; text-align: center; }
     .pick-box { display: inline-block; width: 15px; height: 15px; border: 1.5px solid #333; }
+    .bcode { height: 34px; display: block; }
+    .bcode-c { width: 130px; text-align: center; }
+    .bcode-c img { height: 30px; width: 120px; }
+    .bcode-c .num { font-size: 9px; color: #444; letter-spacing: .5px; }
+    .ord-bc { float: right; text-align: center; }
+    .ord-bc img { height: 34px; width: 150px; }
+    .ord-bc .num { font-size: 9px; color: #444; }
     .toolbar { position: sticky; top: 0; background: #12151b; color: #fff; padding: 12px 16px; margin: -20px -22px 16px; display: flex; gap: 10px; align-items: center; }
     .toolbar button { background: #ff5722; color: #fff; border: 0; border-radius: 8px; padding: 9px 18px; font-weight: 700; font-size: 13px; cursor: pointer; }
     .toolbar .x { background: #333; }
@@ -44,12 +51,15 @@
     {{-- 품목별 집계 (효율 피킹) --}}
     <div class="sec">① 품목별 집계 — 창고에서 한 번에 피킹</div>
     <table class="agg">
-        <thead><tr><th style="width:40px">No</th><th>품목</th><th style="width:90px">총 수량</th><th style="width:80px">주문 수</th><th style="width:44px">완료</th></tr></thead>
+        <thead><tr><th style="width:40px">No</th><th>품목</th><th style="width:132px">상품코드</th><th style="width:80px">총 수량</th><th style="width:64px">주문 수</th><th style="width:40px">완료</th></tr></thead>
         <tbody>
             @foreach($agg as $row)
                 <tr>
                     <td class="c">{{ $loop->iteration }}</td>
                     <td>{{ $row['name'] }}</td>
+                    <td class="bcode-c">
+                        @if($row['barcode'])<img src="{{ $row['barcode'] }}" alt=""><div class="num">{{ $row['code'] }}</div>@else<span class="t-sub">-</span>@endif
+                    </td>
                     <td class="qty">{{ number_format($row['qty']) }}</td>
                     <td class="c">{{ $row['orders'] }}</td>
                     <td class="c"><span class="pick-box"></span></td>
@@ -62,7 +72,9 @@
     <div class="sec">② 주문별 상세 — 분류 · 포장</div>
     @foreach($orders as $o)
         <div class="ord">
-            <div class="ord-h">주문 <span class="no">{{ $o->order_no }}</span> · 수령인 {{ $o->receiver_name ?: $o->customer_name }} · {{ $o->customer_phone }}
+            <div class="ord-h">
+                <span class="ord-bc"><img src="{{ $orderBarcodes[$o->id] }}" alt=""><div class="num">{{ $o->order_no }}</div></span>
+                주문 <span class="no">{{ $o->order_no }}</span> · 수령인 {{ $o->receiver_name ?: $o->customer_name }} · {{ $o->customer_phone }}
                 @if($o->address1)<span style="font-weight:normal;color:#555"> / {{ trim(($o->address1?:'').' '.($o->address2?:'')) }}</span>@endif
             </div>
             <table>

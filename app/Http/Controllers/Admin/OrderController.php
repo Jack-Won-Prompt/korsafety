@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Picqer\Barcode\BarcodeGeneratorPNG;
 
 class OrderController extends Controller
 {
@@ -53,23 +54,43 @@ class OrderController extends Controller
             return back()->with('error', '선택된 주문이 없습니다.');
         }
 
+        $gen = new BarcodeGeneratorPNG();
+        $barcode = fn (string $value) => 'data:image/png;base64,'.base64_encode(
+            $gen->getBarcode($value, $gen::TYPE_CODE_128, 2, 42)
+        );
+
         // 품목별 집계 (product_id 우선, 없으면 상품명)
         $agg = [];
         foreach ($orders as $o) {
             foreach ($o->items as $it) {
                 $key = $it->product_id ?: 'n:'.$it->product_name;
                 if (! isset($agg[$key])) {
-                    $agg[$key] = ['name' => $it->product_name, 'qty' => 0, 'orders' => 0];
+                    $agg[$key] = [
+                        'name' => $it->product_name,
+                        'code' => $it->product_id ? 'P'.$it->product_id : null,
+                        'qty' => 0, 'orders' => 0,
+                    ];
                 }
                 $agg[$key]['qty'] += (int) $it->qty;
                 $agg[$key]['orders']++;
             }
         }
         uasort($agg, fn ($a, $b) => $b['qty'] <=> $a['qty']);
+        foreach ($agg as &$row) {
+            $row['barcode'] = $row['code'] ? $barcode($row['code']) : null;
+        }
+        unset($row);
+
+        // 주문번호 바코드 (PDA 스캔용)
+        $orderBarcodes = [];
+        foreach ($orders as $o) {
+            $orderBarcodes[$o->id] = $barcode($o->order_no);
+        }
 
         $data = [
             'orders' => $orders,
             'agg' => $agg,
+            'orderBarcodes' => $orderBarcodes,
             'printedAt' => now(),
             'totalItems' => array_sum(array_column($agg, 'qty')),
         ];
