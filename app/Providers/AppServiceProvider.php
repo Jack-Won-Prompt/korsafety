@@ -22,6 +22,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // dompdf 폰트 캐시 디렉터리(쓰기 가능) 보장 — 웹서버 사용자가 생성
+        $fontDir = storage_path('app/dompdf');
+        if (! is_dir($fontDir)) {
+            @mkdir($fontDir, 0775, true);
+        }
+
         // Share navigation categories and cart count with every view.
         View::composer('*', function ($view) {
             try {
