@@ -12,7 +12,17 @@
 {{-- 주문 요약 --}}
 <div class="panel">
     <div class="panel-h"><div><h2>주문 정보</h2><div class="sub">{{ $order->order_no }} · {{ optional($order->created_at)->format('Y-m-d H:i') }}</div></div>
-        <span class="badge {{ in_array($order->status,['paid','done'])?'ok':($order->status=='cancelled'?'off':'warn') }}">{{ $order->status_label }}</span>
+        <div style="display:flex;gap:8px;align-items:center">
+            <span class="badge {{ in_array($order->status,['paid','done'])?'ok':($order->status=='cancelled'?'off':'warn') }}">{{ $order->status_label }}</span>
+            <form action="{{ route('admin.orders.status', $order) }}" method="post" style="display:flex;gap:6px;align-items:center">@csrf
+                <select class="input" name="status" style="height:34px;width:112px;font-size:12.5px">
+                    @foreach(\App\Models\Order::STATUSES as $k=>$v)
+                        <option value="{{ $k }}" @selected($order->status===$k)>{{ $v }}</option>
+                    @endforeach
+                </select>
+                <button class="btn btn-sm">상태 변경</button>
+            </form>
+        </div>
     </div>
     <div class="panel-b" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 30px">
         <div><span class="t-sub">고객명</span> · <b>{{ $order->customer_name ?: '-' }}</b></div>

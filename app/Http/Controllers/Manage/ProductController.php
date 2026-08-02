@@ -23,21 +23,164 @@ class ProductController extends Controller
         return Product::where('seller_id', $this->sellerId());
     }
 
+    /** 정렬 옵션 (라벨 → orderBy 처리는 아래 match) */
+    public const SORTS = [
+        'latest' => '최근 등록순', 'display' => '진열 순서', 'name' => '상품명순',
+        'price_desc' => '높은 가격순', 'price_asc' => '낮은 가격순', 'stock_asc' => '재고 적은순',
+    ];
+
+    /** 판매 상태 필터 */
+    public const STATES = [
+        'onsale' => '판매중', 'soldout' => '품절', 'hidden' => '미노출', 'noimage' => '이미지 없음',
+    ];
+
     public function index(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
-        $query = $this->scoped()->with('category')->latest('id');
+        $categoryId = $request->query('category_id');
+        $state = $request->query('state');
+        $stock = $request->query('stock');
+        $sort = $request->query('sort', 'latest');
+
+        $query = $this->scoped()->with('category');
+
         if ($q !== '') {
-            $query->where(fn ($w) => $w->where('name', 'like', "%$q%")->orWhere('brand', 'like', "%$q%"));
+            $query->where(fn ($w) => $w->where('name', 'like', "%$q%")
+                ->orWhere('brand', 'like', "%$q%")
+                ->orWhere('sku', 'like', "%$q%"));
         }
-        $products = $query->paginate(15)->withQueryString();
-        return view('manage.products.index', compact('products', 'q'));
+        if ($categoryId) {
+            $query->where('category_id', $categoryId);
+        }
+        match ($state) {
+            'onsale' => $query->where('is_active', true)->where('is_soldout', false),
+            'soldout' => $query->where('is_soldout', true),
+            'hidden' => $query->where('is_active', false),
+            'noimage' => $query->where(fn ($w) => $w->whereNull('main_image')->orWhere('main_image', '')),
+            default => null,
+        };
+        match ($stock) {
+            'out' => $query->outOfStock(),
+            'low' => $query->lowStock(),
+            'untracked' => $query->where('track_stock', false),
+            default => null,
+        };
+        match ($sort) {
+            'display' => $query->orderBy('sort')->orderByDesc('id'),
+            'name' => $query->orderBy('name'),
+            'price_desc' => $query->orderByRaw('COALESCE(sale_price, price) desc'),
+            'price_asc' => $query->orderByRaw('COALESCE(sale_price, price) asc'),
+            'stock_asc' => $query->orderBy('stock'),
+            default => $query->latest('id'),
+        };
+
+        $products = $query->paginate(20)->withQueryString();
+
+        // 요약 타일 — 필터와 무관하게 스토어 전체 기준
+        $base = fn () => $this->scoped();
+        $stats = [
+            'total' => $base()->count(),
+            'onsale' => $base()->where('is_active', true)->where('is_soldout', false)->count(),
+            'soldout' => $base()->where('is_soldout', true)->count(),
+            'hidden' => $base()->where('is_active', false)->count(),
+            'low' => $base()->lowStock()->count(),
+            'out' => $base()->outOfStock()->count(),
+            'tracked' => $base()->where('track_stock', true)->count(),
+        ];
+
+        return view('manage.products.index', [
+            'products' => $products,
+            'categories' => Category::orderBy('sort')->orderBy('name')->get(),
+            'stats' => $stats,
+            'q' => $q,
+            'categoryId' => $categoryId,
+            'state' => $state,
+            'stock' => $stock,
+            'sort' => $sort,
+        ]);
+    }
+
+    /** 선택 상품 일괄 처리 — 판매상태 · 노출 · 카테고리 이동 · 삭제 */
+    public function bulk(Request $request)
+    {
+        $data = $request->validate([
+            'bulk_action' => 'required|in:onsale,soldout,activate,deactivate,track_on,track_off,category,delete',
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer',
+            'bulk_category_id' => 'nullable|exists:categories,id',
+        ], [], ['ids' => '상품', 'bulk_action' => '일괄 작업']);
+
+        // 남의 스토어 상품이 섞여 들어와도 자기 것만 처리
+        $ids = $this->scoped()->whereIn('id', $data['ids'])->pluck('id');
+        if ($ids->isEmpty()) {
+            return back()->with('error', '처리할 상품이 없습니다.');
+        }
+
+        $rows = Product::whereIn('id', $ids);
+        $n = $ids->count();
+
+        switch ($data['bulk_action']) {
+            case 'onsale':   $rows->update(['is_soldout' => false]); $msg = '판매중으로 변경'; break;
+            case 'soldout':  $rows->update(['is_soldout' => true]);  $msg = '품절 처리'; break;
+            case 'activate': $rows->update(['is_active' => true]);   $msg = '노출 처리'; break;
+            case 'deactivate': $rows->update(['is_active' => false]); $msg = '미노출 처리'; break;
+            case 'track_on':  $rows->update(['track_stock' => true]);  $msg = '재고 관리 켜기'; break;
+            case 'track_off': $rows->update(['track_stock' => false]); $msg = '재고 관리 끄기'; break;
+            case 'category':
+                if (empty($data['bulk_category_id'])) {
+                    return back()->with('error', '이동할 카테고리를 선택하세요.');
+                }
+                $rows->update(['category_id' => $data['bulk_category_id']]);
+                foreach ($ids as $id) {   // 다대다 pivot도 함께 연결
+                    Product::find($id)?->categories()->syncWithoutDetaching([$data['bulk_category_id']]);
+                }
+                $msg = '카테고리 이동';
+                break;
+            default:
+                $rows->delete();
+                $msg = '삭제';
+        }
+
+        return back()->with('status', "{$n}개 상품을 {$msg}했습니다.");
+    }
+
+    /** 목록에서 고친 판매가 · 할인가 · 재고를 한 번에 저장 */
+    public function quickSave(Request $request)
+    {
+        $rows = (array) $request->input('rows', []);
+        $changed = 0;
+
+        foreach ($rows as $id => $vals) {
+            $product = $this->scoped()->find((int) $id);
+            if (! $product) continue;
+
+            $update = [];
+            foreach (['price', 'sale_price', 'stock'] as $field) {
+                if (! array_key_exists($field, $vals)) continue;
+                $raw = trim((string) $vals[$field]);
+                $value = $raw === '' ? null : (int) $raw;
+                if ($value !== null && $value < 0) continue;
+                if ($field === 'stock') { $value = (int) $value; }   // 재고는 비우면 0
+                if ($product->{$field} != $value) {
+                    $update[$field] = $value;
+                }
+            }
+            if ($update) {
+                $product->update($update);
+                $changed++;
+            }
+        }
+
+        return back()->with('status', $changed ? "{$changed}개 상품의 가격·재고를 저장했습니다." : '변경된 값이 없습니다.');
     }
 
     public function create()
     {
-        $categories = Category::orderBy('sort')->get();
-        $product = new Product(['is_soldout' => false]);
+        $categories = Category::orderBy('sort')->orderBy('name')->get();
+        $product = new Product([
+            'is_soldout' => false, 'is_active' => true, 'track_stock' => true,
+            'stock' => 0, 'safety_stock' => 0, 'sort' => 0,
+        ]);
         return view('manage.products.form', compact('product', 'categories'));
     }
 
@@ -118,7 +261,7 @@ class ProductController extends Controller
     }
 
     /** CSV 헤더 (엑셀 호환, UTF-8) */
-    private const CSV_HEADER = ['상품ID', '상품명', '브랜드', '카테고리', '판매가', '할인가', '품절(1=품절)', '대표이미지경로'];
+    private const CSV_HEADER = ['상품ID', 'SKU', '상품명', '브랜드', '카테고리', '판매가', '할인가', '재고', '품절(1=품절)', '노출(1=노출)', '대표이미지경로'];
 
     /** 전체 품목 엑셀(CSV) 다운로드 — 현재 스토어 스코프 */
     public function exportCsv()
@@ -133,12 +276,15 @@ class ProductController extends Controller
             foreach ($products as $p) {
                 fputcsv($out, [
                     $p->id,
+                    $p->sku,
                     $p->name,
                     $p->brand,
                     optional($p->category)->name,
                     $p->price,
                     $p->sale_price,
+                    $p->stock,
                     $p->is_soldout ? 1 : 0,
+                    $p->is_active ? 1 : 0,
                     $p->main_image,
                 ]);
             }
@@ -188,7 +334,7 @@ class ProductController extends Controller
             // 빈 줄 스킵
             if (count(array_filter($row, fn ($v) => trim((string) $v) !== '')) === 0) { continue; }
 
-            [$id, $name, $brand, $catName, $price, $sale, $soldout, $image] = array_pad($row, 8, null);
+            [$id, $sku, $name, $brand, $catName, $price, $sale, $stock, $soldout, $active, $image] = array_pad($row, 11, null);
             $name = trim((string) $name);
             if ($name === '') { $skipped++; continue; }
 
@@ -206,11 +352,16 @@ class ProductController extends Controller
             if ($catName !== '') { $catId = $categories[$catName] ?? null; }
 
             $product->name = $name;
+            $product->sku = trim((string) $sku) ?: null;
             $product->brand = trim((string) $brand) ?: null;
             if ($catId) { $product->category_id = $catId; }
             $product->price = is_numeric($price) ? (int) $price : null;
             $product->sale_price = is_numeric($sale) ? (int) $sale : null;
+            if (is_numeric($stock)) { $product->stock = max(0, (int) $stock); }
             $product->is_soldout = (trim((string) $soldout) === '1');
+            // 노출 칸이 비어 있으면 기존 값 유지 (신규는 노출)
+            $activeRaw = trim((string) $active);
+            if ($activeRaw !== '') { $product->is_active = ($activeRaw === '1'); }
             if (trim((string) $image) !== '') { $product->main_image = trim((string) $image); }
             if (! $product->slug) {
                 $product->slug = Str::limit(Str::slug($name) ?: 'p'.Str::random(6), 120, '');
@@ -246,24 +397,43 @@ class ProductController extends Controller
     {
         return $request->validate([
             'name' => 'required|string|max:250',
+            'sku' => 'nullable|string|max:64',
             'brand' => 'nullable|string|max:120',
             'category_id' => 'nullable|exists:categories,id',
             'price' => 'nullable|integer|min:0',
+            'cost_price' => 'nullable|integer|min:0',
             'sale_price' => 'nullable|integer|min:0',
+            'stock' => 'nullable|integer|min:0|max:999999',
+            'safety_stock' => 'nullable|integer|min:0|max:999999',
+            'track_stock' => 'nullable|boolean',
+            'sort' => 'nullable|integer|min:0|max:9999',
+            'description' => 'nullable|string|max:20000',
             'is_soldout' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
             'main_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:8192',
             'gallery.*' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:8192',
-        ], [], ['name' => '상품명', 'price' => '판매가', 'main_image' => '대표 이미지']);
+        ], [], [
+            'name' => '상품명', 'price' => '판매가', 'cost_price' => '매입가', 'sale_price' => '할인가',
+            'stock' => '재고', 'safety_stock' => '안전재고', 'sort' => '진열 순서', 'main_image' => '대표 이미지',
+        ]);
     }
 
     private function fill(Product $product, array $data, Request $request): void
     {
         $product->name = $data['name'];
+        $product->sku = $data['sku'] ?? null;
         $product->brand = $data['brand'] ?? null;
         $product->category_id = $data['category_id'] ?? null;
         $product->price = $data['price'] ?? null;
+        $product->cost_price = $data['cost_price'] ?? null;
         $product->sale_price = $data['sale_price'] ?? null;
+        $product->stock = (int) ($data['stock'] ?? 0);
+        $product->safety_stock = (int) ($data['safety_stock'] ?? 0);
+        $product->track_stock = $request->boolean('track_stock');
+        $product->sort = (int) ($data['sort'] ?? 0);
+        $product->description = $data['description'] ?? null;
         $product->is_soldout = $request->boolean('is_soldout');
+        $product->is_active = $request->boolean('is_active');
         if (! $product->slug) {
             $product->slug = Str::limit(Str::slug($data['name']) ?: 'p'.Str::random(6), 120, '');
         }

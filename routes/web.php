@@ -17,9 +17,11 @@ use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\Manage\AuthController as ManageAuth;
+use App\Http\Controllers\Manage\CategoryController as ManageCategory;
 use App\Http\Controllers\Manage\OrderController as ManageOrder;
 use App\Http\Controllers\Manage\PartnerController;
 use App\Http\Controllers\Manage\ProductController as ManageProduct;
+use App\Http\Controllers\Manage\ServiceRequestController as ManageSr;
 use App\Http\Controllers\SellerController;
 use App\Http\Controllers\ShopController;
 use Illuminate\Support\Facades\Route;
@@ -107,7 +109,9 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
     // 주문 관리 (HQ) + 거래명세서 · 세금계산서
     Route::get('orders', [AdminOrder::class, 'index'])->name('admin.orders.index');
     Route::match(['get', 'post'], 'orders/picking', [AdminOrder::class, 'picking'])->name('admin.orders.picking');
+    Route::post('orders/bulk-status', [AdminOrder::class, 'bulkStatus'])->name('admin.orders.bulkstatus');
     Route::get('orders/{order}', [AdminOrder::class, 'show'])->name('admin.orders.show');
+    Route::post('orders/{order}/status', [AdminOrder::class, 'updateStatus'])->name('admin.orders.status');
     Route::get('orders/{order}/statement/preview', [AdminStatement::class, 'preview'])->name('admin.orders.statement.preview');
     Route::get('orders/{order}/statement/print', [AdminStatement::class, 'print'])->name('admin.orders.statement.print');
     Route::get('orders/{order}/statement/download', [AdminStatement::class, 'download'])->name('admin.orders.statement.download');
@@ -169,9 +173,31 @@ Route::prefix('purchaser')->middleware('role:purchaser')->group(function () {
     Route::post('orders/{order}/status', [PurchaserOrder::class, 'updateStatus'])->name('purchaser.orders.status');
 });
 
+// SR(Service Request) — 관리 콘솔 전 역할 공통
+Route::prefix('manage/sr')->middleware('role:hq_admin,seller,agent,purchaser')->group(function () {
+    Route::get('/', [ManageSr::class, 'index'])->name('manage.sr.index');
+    Route::get('create', [ManageSr::class, 'create'])->name('manage.sr.create');
+    Route::post('/', [ManageSr::class, 'store'])->name('manage.sr.store');
+    Route::get('{serviceRequest}', [ManageSr::class, 'show'])->name('manage.sr.show');
+    Route::post('{serviceRequest}/reply', [ManageSr::class, 'reply'])->name('manage.sr.reply');
+    Route::post('{serviceRequest}/status', [ManageSr::class, 'updateStatus'])->name('manage.sr.status');
+    Route::post('{serviceRequest}/assign', [ManageSr::class, 'assign'])->name('manage.sr.assign');
+});
+
+// 상품 카테고리 관리 (본사 전용 — 카테고리는 쇼핑몰 공통)
+Route::prefix('manage/categories')->middleware('role:hq_admin')->group(function () {
+    Route::get('/', [ManageCategory::class, 'index'])->name('manage.categories.index');
+    Route::post('/', [ManageCategory::class, 'store'])->name('manage.categories.store');
+    Route::put('{category}', [ManageCategory::class, 'update'])->name('manage.categories.update');
+    Route::delete('{category}', [ManageCategory::class, 'destroy'])->name('manage.categories.destroy');
+    Route::post('{category}/toggle', [ManageCategory::class, 'toggle'])->name('manage.categories.toggle');
+});
+
 // 공통 상품/주문 관리 (본사 + 판매점, 각자 자기 스토어로 스코프)
 Route::prefix('manage')->middleware('role:hq_admin,seller')->group(function () {
     Route::get('products', [ManageProduct::class, 'index'])->name('manage.products.index');
+    Route::post('products/bulk', [ManageProduct::class, 'bulk'])->name('manage.products.bulk');
+    Route::post('products/quick-save', [ManageProduct::class, 'quickSave'])->name('manage.products.quicksave');
     Route::get('products/export', [ManageProduct::class, 'exportCsv'])->name('manage.products.export');
     Route::get('products/import/template', [ManageProduct::class, 'importTemplate'])->name('manage.products.import.template');
     Route::post('products/import', [ManageProduct::class, 'importCsv'])->name('manage.products.import');

@@ -26,7 +26,7 @@ class ShopController extends Controller
         // 카테고리별 대표 상품 이미지 1장 매핑
         $slugs = array_column($lineup, 'slug');
         $cats = Category::whereIn('slug', $slugs)->with(['products' => function ($q) {
-            $q->whereNotNull('main_image')->where('main_image', '!=', '')->orderBy('id')->limit(1);
+            $q->visible()->whereNotNull('main_image')->where('main_image', '!=', '')->orderBy('id')->limit(1);
         }])->get()->keyBy('slug');
 
         foreach ($lineup as &$row) {
@@ -49,15 +49,15 @@ class ShopController extends Controller
             ]);
         }
 
-        $categories = Category::orderBy('sort')->withCount('products')->get();
+        $categories = Category::active()->orderBy('sort')->withCount('products')->get();
 
-        $best = Product::query()
+        $best = Product::query()->visible()
             ->whereNotNull('main_image')
             ->where('is_soldout', false)
             ->inRandomOrder()
             ->limit(8)->get();
 
-        $newIn = Product::query()
+        $newIn = Product::query()->visible()
             ->whereNotNull('main_image')
             ->orderByDesc('external_no')
             ->limit(10)->get();
@@ -66,7 +66,7 @@ class ShopController extends Controller
         $showcase = $categories->take(6)->map(function ($cat) {
             return [
                 'category' => $cat,
-                'products' => $cat->products()
+                'products' => $cat->products()->visible()
                     ->whereNotNull('main_image')
                     ->inRandomOrder()->limit(4)->get(),
             ];
@@ -81,7 +81,7 @@ class ShopController extends Controller
     public function category(Request $request, Category $category)
     {
         $sort = $request->query('sort', 'recommended');
-        $query = $category->products()->whereNotNull('main_image');
+        $query = $category->products()->visible()->whereNotNull('main_image');
 
         match ($sort) {
             'price_asc'  => $query->orderByRaw('COALESCE(sale_price, price) asc'),
@@ -92,15 +92,22 @@ class ShopController extends Controller
         };
 
         $products = $query->paginate(24)->withQueryString();
-        $categories = Category::orderBy('sort')->get();
+        $categories = Category::active()->orderBy('sort')->get();
 
         return view('shop.category', compact('category', 'products', 'categories', 'sort'));
     }
 
     public function product(Product $product)
     {
+        // 미노출 상품은 고객에게 숨기고, 관리자는 미리보기 가능
+        if (! $product->is_active) {
+            $u = auth()->user();
+            abort_unless($u && ($u->isHqAdmin() || $u->isSeller()), 404);
+        }
+
         $product->load(['images', 'category']);
-        $related = Product::where('category_id', $product->category_id)
+        $related = Product::visible()
+            ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
             ->whereNotNull('main_image')
             ->inRandomOrder()->limit(4)->get();
@@ -113,13 +120,13 @@ class ShopController extends Controller
         $q = trim((string) $request->query('q', ''));
         $products = collect();
         if ($q !== '') {
-            $products = Product::query()
+            $products = Product::query()->visible()
                 ->whereNotNull('main_image')
                 ->where(fn ($w) => $w->where('name', 'like', "%$q%")->orWhere('brand', 'like', "%$q%"))
                 ->orderByDesc('external_no')
                 ->paginate(24)->withQueryString();
         }
-        $categories = Category::orderBy('sort')->get();
+        $categories = Category::active()->orderBy('sort')->get();
 
         return view('shop.search', compact('q', 'products', 'categories'));
     }

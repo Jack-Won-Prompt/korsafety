@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
         // Share navigation categories and cart count with every view.
         View::composer('*', function ($view) {
             try {
-                $cats = Category::orderBy('sort')->get();
+                $cats = Category::active()->orderBy('sort')->get();
             } catch (\Throwable $e) {
                 $cats = collect();
             }

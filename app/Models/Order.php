@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Order extends Model
 {
+    /** 주문 상태 코드 → 표기 */
+    public const STATUSES = [
+        'pending' => '결제대기', 'paid' => '결제완료', 'shipped' => '배송중',
+        'done' => '배송완료', 'cancelled' => '취소',
+    ];
+
     protected $fillable = [
         'order_no', 'agent_id', 'client_id', 'purchaser_id', 'buyer_id', 'user_id',
         'customer_name', 'customer_phone',
@@ -32,10 +38,7 @@ class Order extends Model
 
     public function getStatusLabelAttribute(): string
     {
-        return [
-            'pending' => '결제대기', 'paid' => '결제완료', 'shipped' => '배송중',
-            'done' => '배송완료', 'cancelled' => '취소',
-        ][$this->status] ?? $this->status;
+        return self::STATUSES[$this->status] ?? $this->status;
     }
 
     public function items(): HasMany

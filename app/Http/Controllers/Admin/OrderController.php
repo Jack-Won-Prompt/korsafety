@@ -32,6 +32,34 @@ class OrderController extends Controller
         return view('admin.orders.show', compact('order'));
     }
 
+    /** 주문 상태 변경 (단건) */
+    public function updateStatus(Request $request, Order $order)
+    {
+        $data = $request->validate(['status' => 'required|in:'.implode(',', array_keys(Order::STATUSES))]);
+        $order->update(['status' => $data['status']]);
+
+        return back()->with('status', $order->order_no.' 상태를 '.$order->status_label.'(으)로 변경했습니다.');
+    }
+
+    /** 주문 상태 일괄 변경 — 피킹 후 배송 처리용 (선택 주문만) */
+    public function bulkStatus(Request $request)
+    {
+        $data = $request->validate([
+            'status' => 'required|in:'.implode(',', array_keys(Order::STATUSES)),
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer',
+        ], [], ['ids' => '주문']);
+
+        // 모델 단위로 갱신해야 상태 변경 이벤트(앱 푸시 알림)가 발생한다.
+        $n = 0;
+        foreach (Order::whereIn('id', $data['ids'])->get() as $order) {
+            $order->update(['status' => $data['status']]);
+            $n++;
+        }
+
+        return back()->with('status', $n.'건의 주문을 '.Order::STATUSES[$data['status']].'(으)로 변경했습니다.');
+    }
+
     /**
      * 피킹 리스트 — 선택 주문(체크) 기반 통합 출력.
      * format=pdf(다운로드) | print(PDA/브라우저 인쇄).

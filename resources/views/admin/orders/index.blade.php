@@ -11,7 +11,7 @@
             <input class="input" style="height:38px;flex:1 1 0;min-width:120px" name="q" value="{{ $q }}" placeholder="주문번호·고객·수령인·연락처 검색">
             <select class="input" style="height:38px;flex:0 0 108px" name="status">
                 <option value="">전체 상태</option>
-                @foreach(['pending'=>'결제대기','paid'=>'결제완료','shipped'=>'배송중','done'=>'배송완료','cancelled'=>'취소'] as $k=>$v)
+                @foreach(\App\Models\Order::STATUSES as $k=>$v)
                     <option value="{{ $k }}" @selected($status===$k)>{{ $v }}</option>
                 @endforeach
             </select>
@@ -37,7 +37,14 @@
     <div class="panel">
         <div class="panel-h">
             <div><h2>전체 주문</h2><div class="sub">총 {{ number_format($orders->total()) }}건 · <span id="selCount">0</span>건 선택</div></div>
-            <div style="display:flex;gap:8px">
+            <div style="display:flex;gap:8px;align-items:center">
+                <select class="input" id="bulkStatus" style="height:34px;width:112px;font-size:12.5px">
+                    <option value="">상태 변경…</option>
+                    @foreach(\App\Models\Order::STATUSES as $k=>$v)
+                        <option value="{{ $k }}">{{ $v }}</option>
+                    @endforeach
+                </select>
+                <button type="button" class="btn btn-sm" onclick="bulk()">일괄 적용</button>
                 <button type="button" class="btn btn-sm" onclick="pick('print')">🖨 PDA 출력(피킹)</button>
                 <button type="button" class="btn btn-sm btn-accent" onclick="pick('pdf')">⭳ 피킹리스트 PDF</button>
             </div>
@@ -72,6 +79,13 @@
         </table>
     </div>
 </form>
+
+{{-- 일괄 상태 변경 (체크한 주문만 — 필터용 status와 충돌하지 않도록 별도 폼) --}}
+<form id="bulkForm" method="post" action="{{ route('admin.orders.bulkstatus') }}">@csrf
+    <input type="hidden" name="status" id="bulkStatusValue">
+    <div id="bulkIds"></div>
+</form>
+
 {{ $orders->links('manage.pagination') }}
 
 @push('scripts')
@@ -83,11 +97,28 @@
     function refresh(){ count.textContent = rows().filter(function(c){return c.checked;}).length; }
     all.addEventListener('change', function(){ rows().forEach(function(c){ c.checked = all.checked; }); refresh(); });
     document.addEventListener('change', function(e){ if(e.target.classList.contains('chkRow')) refresh(); });
+    function checked(){ return rows().filter(function(c){return c.checked;}); }
     window.pick = function(fmt){
-        var n = rows().filter(function(c){return c.checked;}).length;
-        if(n === 0 && !confirm('선택된 주문이 없습니다. 현재 검색 결과 전체를 출력할까요?')) return;
+        if(checked().length === 0 && !confirm('선택된 주문이 없습니다. 현재 검색 결과 전체를 출력할까요?')) return;
         document.getElementById('pickFormat').value = fmt;
         document.getElementById('pickForm').submit();
+    };
+    window.bulk = function(){
+        var sel = document.getElementById('bulkStatus');
+        var ids = checked().map(function(c){ return c.value; });
+        if(!sel.value){ alert('변경할 상태를 선택하세요.'); sel.focus(); return; }
+        if(ids.length === 0){ alert('상태를 변경할 주문을 체크하세요.'); return; }
+        var label = sel.options[sel.selectedIndex].text;
+        if(!confirm('선택한 ' + ids.length + '건을 "' + label + '" 상태로 변경할까요?')) return;
+        var box = document.getElementById('bulkIds');
+        box.innerHTML = '';
+        ids.forEach(function(v){
+            var i = document.createElement('input');
+            i.type = 'hidden'; i.name = 'ids[]'; i.value = v;
+            box.appendChild(i);
+        });
+        document.getElementById('bulkStatusValue').value = sel.value;
+        document.getElementById('bulkForm').submit();
     };
 })();
 </script>

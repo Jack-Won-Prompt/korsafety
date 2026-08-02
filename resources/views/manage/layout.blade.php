@@ -11,6 +11,8 @@
     if ($isHq) {
         try { $inquiryUnread = (int) \App\Models\Inquiry::sum('unread_admin'); } catch (\Throwable $e) {}
     }
+    // 상단 SR 배지 — 본사는 미처리 전체, 그 외 역할은 본인 미종료 건
+    $srOpen = \App\Http\Controllers\Manage\ServiceRequestController::badgeCount($u);
 @endphp
 <!DOCTYPE html>
 <html lang="ko">
@@ -59,6 +61,7 @@
                 <a href="{{ route('admin.purchasers') }}" class="{{ request()->routeIs('admin.purchasers') ? 'active' : '' }}">{!! $ic($navUsers) !!} 구매 대행자 관리</a>
                 <a href="{{ route('admin.cashbacks') }}" class="{{ request()->routeIs('admin.cashbacks') ? 'active' : '' }}">{!! $ic($navCoin) !!} 캐쉬백 정산</a>
                 <a href="{{ route('manage.products.index') }}" class="{{ request()->routeIs('manage.products.*') ? 'active' : '' }}">{!! $ic($navBox) !!} 상품 관리</a>
+                <a href="{{ route('manage.categories.index') }}" class="{{ request()->routeIs('manage.categories.*') ? 'active' : '' }}">{!! $ic('<path d="M3 5h8v6H3zM13 5h8v4h-8zM13 13h8v6h-8zM3 15h8v4H3z"/>') !!} 상품 카테고리</a>
                 <a href="{{ route('manage.orders') }}" class="{{ request()->routeIs('manage.orders') ? 'active' : '' }}">{!! $ic($navBag) !!} 주문 내역</a>
                 <a href="{{ route('admin.orders.index') }}" class="{{ request()->routeIs('admin.orders.*') ? 'active' : '' }}">{!! $ic('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/>') !!} 주문·명세서 관리</a>
                 <a href="{{ route('admin.taxinvoice.index') }}" class="{{ request()->routeIs('admin.taxinvoice.*') ? 'active' : '' }}">{!! $ic('<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 7h8M8 11h8M8 15h5"/>') !!} 세금계산서</a>
@@ -79,6 +82,12 @@
                 <a href="{{ route('manage.products.index') }}" class="{{ request()->routeIs('manage.products.*') ? 'active' : '' }}">{!! $ic($navBox) !!} 상품 관리</a>
                 <a href="{{ route('manage.orders') }}" class="{{ request()->routeIs('manage.orders') ? 'active' : '' }}">{!! $ic($navBag) !!} 주문 내역</a>
             @endif
+
+            <div class="grp">지원</div>
+            <a href="{{ route('manage.sr.index') }}" class="{{ request()->routeIs('manage.sr.*') ? 'active' : '' }}">
+                {!! $ic('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>') !!}
+                SR 서비스 요청 @if($srOpen)<span class="nav-badge">{{ $srOpen }}</span>@endif
+            </a>
         </nav>
 
         <div class="side-foot">
@@ -97,12 +106,22 @@
                 <div class="crumb">@yield('crumb', 'KOR SAFETY 관리 콘솔')</div>
             </div>
             <div class="t-actions">
+                <a href="{{ route('manage.sr.index') }}" class="sr-btn {{ request()->routeIs('manage.sr.*') ? 'on' : '' }}"
+                   title="SR · 서비스 요청 {{ $isHq ? '(미처리 건수)' : '(내 미종료 건수)' }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>
+                        <path d="M9 13h6M9 17h4"/>
+                    </svg>
+                    <b>SR</b>
+                    @if($srOpen)<span class="sr-badge">{{ $srOpen > 99 ? '99+' : $srOpen }}</span>@endif
+                </a>
                 <a href="{{ route('home') }}" target="_blank" class="btn btn-sm">쇼핑몰 보기 ↗</a>
                 @yield('actions')
             </div>
         </div>
         <div class="content">
             @if(session('status'))<div class="flash ok">✓ {{ session('status') }}</div>@endif
+            @if(session('error'))<div class="flash err">! {{ session('error') }}</div>@endif
             @if($errors->any())<div class="flash err">! {{ $errors->first() }}</div>@endif
             @yield('content')
         </div>

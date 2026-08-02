@@ -37,18 +37,72 @@
                     </div>
                     <div class="form-2">
                         <div class="form-row">
+                            <label>SKU (품번)</label>
+                            <input class="input" name="sku" value="{{ old('sku', $product->sku) }}" placeholder="예) KS-SHOE-001">
+                            <div class="hint">창고·발주에서 상품을 구분하는 코드입니다.</div>
+                        </div>
+                        <div class="form-row">
+                            <label>진열 순서</label>
+                            <input class="input" type="number" name="sort" value="{{ old('sort', $product->sort ?? 0) }}" min="0">
+                            <div class="hint">작을수록 목록 앞쪽에 표시됩니다.</div>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label>상세 설명</label>
+                        <textarea class="input" name="description" rows="7" style="height:auto;padding:13px;line-height:1.7"
+                                  placeholder="규격 · 소재 · 인증 정보 등 구매 판단에 필요한 내용을 적어 주세요.">{{ old('description', $product->description) }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-h"><div><h2>가격 · 재고</h2><div class="sub">할인가가 정상가보다 낮을 때 할인 배지가 표시됩니다</div></div></div>
+                <div class="panel-b">
+                    <div class="form-2">
+                        <div class="form-row">
                             <label>정상가 (원)</label>
-                            <input class="input" type="number" name="price" value="{{ old('price', $product->price) }}" placeholder="0">
+                            <input class="input" type="number" name="price" value="{{ old('price', $product->price) }}" placeholder="0" min="0">
                         </div>
                         <div class="form-row">
                             <label>할인가 (원)</label>
-                            <input class="input" type="number" name="sale_price" value="{{ old('sale_price', $product->sale_price) }}" placeholder="할인 시 입력">
-                            <div class="hint">할인가가 정상가보다 낮으면 할인 배지가 표시됩니다.</div>
+                            <input class="input" type="number" name="sale_price" value="{{ old('sale_price', $product->sale_price) }}" placeholder="할인 시 입력" min="0">
                         </div>
                     </div>
-                    <div class="form-row" style="display:flex;align-items:center;gap:12px">
-                        <label class="switch" style="margin:0"><input type="checkbox" name="is_soldout" value="1" {{ old('is_soldout', $product->is_soldout) ? 'checked' : '' }}><span class="slider"></span></label>
-                        <span style="font-weight:700;font-size:14px">품절 처리</span>
+                    <div class="form-2">
+                        <div class="form-row">
+                            <label>매입가 (원)</label>
+                            <input class="input" type="number" name="cost_price" value="{{ old('cost_price', $product->cost_price) }}" placeholder="마진 계산용" min="0">
+                            @if($product->margin_percent !== null)<div class="hint">현재 마진율 {{ $product->margin_percent }}%</div>@endif
+                        </div>
+                        <div class="form-row">
+                            <label>재고 수량</label>
+                            <input class="input" type="number" name="stock" value="{{ old('stock', $product->stock ?? 0) }}" min="0">
+                            <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+                                <label class="switch" style="margin:0"><input type="checkbox" name="track_stock" value="1" {{ old('track_stock', $product->exists ? $product->track_stock : true) ? 'checked' : '' }}><span class="slider"></span></label>
+                                <span style="font-weight:700;font-size:14px">재고 관리 사용</span>
+                            </div>
+                            <div class="hint">끄면 재고 부족·소진 경고 대상에서 제외됩니다.</div>
+                        </div>
+                    </div>
+                    <div class="form-2">
+                        <div class="form-row">
+                            <label>안전재고</label>
+                            <input class="input" type="number" name="safety_stock" value="{{ old('safety_stock', $product->safety_stock ?? 0) }}" min="0">
+                            <div class="hint">재고가 이 수량 이하로 떨어지면 ‘재고 부족’으로 표시됩니다. (0이면 사용 안 함)</div>
+                        </div>
+                        <div class="form-row">
+                            <label>판매 상태</label>
+                            <div style="display:flex;flex-direction:column;gap:12px;padding-top:8px">
+                                <div style="display:flex;align-items:center;gap:12px">
+                                    <label class="switch" style="margin:0"><input type="checkbox" name="is_soldout" value="1" {{ old('is_soldout', $product->is_soldout) ? 'checked' : '' }}><span class="slider"></span></label>
+                                    <span style="font-weight:700;font-size:14px">품절 처리</span>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:12px">
+                                    <label class="switch" style="margin:0"><input type="checkbox" name="is_active" value="1" {{ old('is_active', $product->exists ? $product->is_active : true) ? 'checked' : '' }}><span class="slider"></span></label>
+                                    <span style="font-weight:700;font-size:14px">쇼핑몰에 노출</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
