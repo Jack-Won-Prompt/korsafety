@@ -341,6 +341,21 @@ h1,h2,h3,h4 { margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height:
 .pd-detail-imgs img { margin: 0 auto; border-radius: 6px; }
 .pd-empty { text-align: center; color: var(--muted); padding: 60px 0; }
 
+/* 관리자 리치 에디터로 작성한 상세 설명 */
+.pd-desc { max-width: 860px; margin: 0 auto 40px; font-size: 15px; line-height: 1.85; color: var(--ink-2); word-break: break-word; }
+.pd-desc img { max-width: 100%; height: auto; border-radius: 6px; }
+.pd-desc h2 { font-size: 22px; margin: 28px 0 12px; color: var(--ink); }
+.pd-desc h3 { font-size: 19px; margin: 24px 0 10px; color: var(--ink); }
+.pd-desc h4 { font-size: 16px; margin: 20px 0 8px; color: var(--ink); }
+.pd-desc p { margin: 0 0 12px; }
+.pd-desc ul, .pd-desc ol { margin: 0 0 14px; padding-left: 22px; }
+.pd-desc li { margin-bottom: 6px; }
+.pd-desc a { color: var(--accent); text-decoration: underline; }
+.pd-desc blockquote { margin: 16px 0; padding: 12px 18px; border-left: 3px solid var(--accent); background: var(--bg-soft); }
+.pd-desc .ql-align-center { text-align: center; }
+.pd-desc .ql-align-right { text-align: right; }
+.pd-desc .ql-align-justify { text-align: justify; }
+
 /* spec + notice blocks */
 .pd-spec { max-width: 860px; margin: 48px auto 0; }
 .pd-spec h3, .pd-notice h3 { font-size: 18px; margin-bottom: 16px; }

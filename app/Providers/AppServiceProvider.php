@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\Category;
+use App\Models\Order;
 use App\Models\Setting;
+use App\Observers\OrderObserver;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +24,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // 주문 상태 변경 → 앱 푸시 알림
+        Order::observe(OrderObserver::class);
+
         // dompdf 폰트 캐시 디렉터리(쓰기 가능) 보장 — 웹서버 사용자가 생성
         $fontDir = storage_path('app/dompdf');
         if (! is_dir($fontDir)) {

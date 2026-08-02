@@ -42,4 +42,14 @@ return [
         'base_url' => env('TOSS_BASE_URL', 'https://api.tosspayments.com'),
     ],
 
+    /*
+     | FCM(Firebase Cloud Messaging) — 앱 푸시 알림.
+     | credentials: Firebase 콘솔 > 프로젝트 설정 > 서비스 계정 > 새 비공개 키 생성으로 받은 JSON 파일 경로.
+     | 미설정이면 푸시 발송은 조용히 건너뜁니다(기능 off).
+     */
+    'fcm' => [
+        'project_id' => env('FCM_PROJECT_ID'),
+        'credentials' => env('FCM_CREDENTIALS', storage_path('app/firebase/service-account.json')),
+    ],
+
 ];

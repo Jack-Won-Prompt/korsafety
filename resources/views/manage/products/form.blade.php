@@ -49,8 +49,10 @@
                     </div>
                     <div class="form-row">
                         <label>상세 설명</label>
-                        <textarea class="input" name="description" rows="7" style="height:auto;padding:13px;line-height:1.7"
-                                  placeholder="규격 · 소재 · 인증 정보 등 구매 판단에 필요한 내용을 적어 주세요.">{{ old('description', $product->description) }}</textarea>
+                        <div class="rte" id="descWrap"><div id="descEditor"></div></div>
+                        <input type="hidden" name="description" id="descInput" value="{{ old('description', $product->description) }}">
+                        <div class="hint">이미지는 복사·붙여넣기(Ctrl+V)하거나 툴바의 🖼 아이콘으로 넣을 수 있습니다.</div>
+                        @error('description')<div class="err-msg">{{ $message }}</div>@enderror
                     </div>
                 </div>
             </div>
@@ -156,12 +158,138 @@
     </div>
 </form>
 
+@push('styles')
+<link rel="stylesheet" href="https://cdn.quilljs.com/1.3.7/quill.snow.css">
+<style>
+    .rte{border:1.5px solid var(--line);border-radius:10px;transition:border-color .15s;background:#fff}
+    .rte.focused{border-color:var(--accent)}
+    .rte .ql-toolbar{border:none;border-bottom:1px solid var(--line);border-radius:10px 10px 0 0;background:#fafbfc;padding:7px 10px}
+    .rte .ql-container{border:none;font-family:inherit}
+    .rte .ql-editor{min-height:240px;max-height:520px;overflow-y:auto;padding:14px;font-size:14px;line-height:1.75;color:var(--ink)}
+    .rte .ql-editor.ql-blank::before{color:#9aa0aa;font-style:normal}
+    .rte .ql-editor img{max-width:100%;height:auto}
+</style>
+@endpush
+
 @push('scripts')
 <script>
     var mi=document.getElementById('mainInput');
     if(mi) mi.addEventListener('change',function(){document.getElementById('mainLabel').textContent=this.files[0]?('선택됨: '+this.files[0].name):'대표 이미지 업로드 (클릭)';});
     var gi=document.getElementById('galInput');
     if(gi) gi.addEventListener('change',function(){document.getElementById('galLabel').textContent=this.files.length?(this.files.length+'장 선택됨'):'갤러리 이미지 추가';});
+</script>
+
+{{-- 상세 설명 리치 에디터 (Quill) --}}
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<script>
+(function(){
+    var editorEl = document.getElementById('descEditor');
+    var wrapEl   = document.getElementById('descWrap');
+    var hiddenEl = document.getElementById('descInput');
+    if(!editorEl || !hiddenEl || typeof Quill === 'undefined') return;
+
+    var UPLOAD_URL = @json(route('manage.products.upload-image'));
+    var CSRF = document.querySelector('meta[name=csrf-token]').content;
+
+    // 이미지 크기 조절 결과(style/width/height)가 저장 후에도 남도록 blot 확장
+    var ImageBlot = Quill.import('formats/image');
+    var KEEP = ['alt', 'src', 'width', 'height', 'style'];
+    class SizedImage extends ImageBlot {
+        static formats(node){
+            return KEEP.reduce(function(f, k){
+                if(node.hasAttribute(k)) f[k] = node.getAttribute(k);
+                return f;
+            }, {});
+        }
+        format(name, value){
+            if(KEEP.indexOf(name) > -1){
+                value ? this.domNode.setAttribute(name, value) : this.domNode.removeAttribute(name);
+            } else {
+                super.format(name, value);
+            }
+        }
+    }
+    Quill.register(SizedImage, true);
+
+    var quill = new Quill(editorEl, {
+        theme: 'snow',
+        placeholder: '규격 · 소재 · 인증 정보 등 구매 판단에 필요한 내용을 적어 주세요.',
+        modules: {
+            toolbar: [
+                [{ header: [false, 2, 3, 4] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ color: [] }, { background: [] }],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                [{ align: [] }],
+                ['blockquote', 'link', 'image'],
+                ['clean'],
+            ],
+        },
+    });
+
+    // 기존 값 로드 — HTML이면 그대로 주입(이미지 크기 보존), 평문이면 텍스트로
+    var initial = (hiddenEl.value || '').trim();
+    if(initial){
+        if(/<\w+[\s\S]*?>/.test(initial)){
+            quill.root.innerHTML = initial;
+            quill.update();
+        } else {
+            quill.setText(initial);
+        }
+    }
+
+    quill.on('selection-change', function(r){ wrapEl.classList.toggle('focused', !!r); });
+
+    function upload(file){
+        if(!file) return;
+        var fd = new FormData();
+        fd.append('image', file);
+        fetch(UPLOAD_URL, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+            credentials: 'same-origin',
+            body: fd,
+        }).then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
+          .then(function(d){
+              if(!d.url) return;
+              var range = quill.getSelection(true) || { index: quill.getLength() };
+              quill.insertEmbed(range.index, 'image', d.url);
+              quill.setSelection(range.index + 1);
+          })
+          .catch(function(err){ alert('이미지 업로드에 실패했습니다. (' + err + ')'); });
+    }
+
+    quill.getModule('toolbar').addHandler('image', function(){
+        var inp = document.createElement('input');
+        inp.type = 'file'; inp.accept = 'image/*';
+        inp.onchange = function(){ if(inp.files[0]) upload(inp.files[0]); };
+        inp.click();
+    });
+
+    // 붙여넣기 · 드래그 앤 드롭으로 이미지 첨부
+    quill.root.addEventListener('paste', function(e){
+        var item = Array.prototype.slice.call((e.clipboardData || {}).items || [])
+            .filter(function(x){ return x.type.indexOf('image/') === 0; })[0];
+        if(!item) return;
+        e.preventDefault();
+        upload(item.getAsFile());
+    });
+    quill.root.addEventListener('drop', function(e){
+        var file = Array.prototype.slice.call((e.dataTransfer || {}).files || [])
+            .filter(function(f){ return f.type.indexOf('image/') === 0; })[0];
+        if(!file) return;
+        e.preventDefault();
+        upload(file);
+    });
+
+    // 저장 직전 HTML을 hidden으로 동기화 (빈 내용이면 빈 문자열)
+    var form = editorEl.closest('form');
+    if(form){
+        form.addEventListener('submit', function(){
+            hiddenEl.value = quill.getLength() <= 1 ? '' : quill.root.innerHTML;
+        });
+    }
+})();
 </script>
 @endpush
 @endsection

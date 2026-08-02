@@ -90,6 +90,11 @@
             <span class="t active">상세정보</span>
         </div>
 
+        @if($product->description)
+            {{-- 관리자 리치 에디터로 작성한 상세 설명 (저장 시 서버에서 정제된 HTML) --}}
+            <div class="pd-desc">{!! $product->description !!}</div>
+        @endif
+
         @if($detailImgs->count())
             <div class="pd-detail-imgs">
                 @foreach($detailImgs as $img)

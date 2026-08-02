@@ -198,6 +198,7 @@ Route::prefix('manage')->middleware('role:hq_admin,seller')->group(function () {
     Route::get('products', [ManageProduct::class, 'index'])->name('manage.products.index');
     Route::post('products/bulk', [ManageProduct::class, 'bulk'])->name('manage.products.bulk');
     Route::post('products/quick-save', [ManageProduct::class, 'quickSave'])->name('manage.products.quicksave');
+    Route::post('products/upload-image', [ManageProduct::class, 'uploadImage'])->name('manage.products.upload-image');
     Route::get('products/export', [ManageProduct::class, 'exportCsv'])->name('manage.products.export');
     Route::get('products/import/template', [ManageProduct::class, 'importTemplate'])->name('manage.products.import.template');
     Route::post('products/import', [ManageProduct::class, 'importCsv'])->name('manage.products.import');

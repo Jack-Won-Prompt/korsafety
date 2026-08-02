@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Support\RichTextSanitizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -229,6 +230,25 @@ class ProductController extends Controller
         return back()->with('status', '상품이 삭제되었습니다.');
     }
 
+    /**
+     * 상세 설명 리치 에디터의 이미지 업로드 (붙여넣기 · 툴바).
+     * 스토어별 업로드 폴더에 저장하고 공개 URL을 돌려준다.
+     */
+    public function uploadImage(Request $request)
+    {
+        $request->validate(['image' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:8192'], [], ['image' => '이미지']);
+
+        $dir = public_path('shop/uploads/'.$this->sellerId().'/editor');
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        $file = $request->file('image');
+        $name = date('Ymd_His').'_'.Str::lower(Str::random(6)).'.'.strtolower($file->getClientOriginalExtension());
+        $file->move($dir, $name);
+
+        return response()->json(['url' => asset('shop/uploads/'.$this->sellerId().'/editor/'.$name)]);
+    }
+
     /** 대표 이미지 편집기 (회전·밝기·대비·크롭) */
     public function editImage(Product $product)
     {
@@ -407,7 +427,7 @@ class ProductController extends Controller
             'safety_stock' => 'nullable|integer|min:0|max:999999',
             'track_stock' => 'nullable|boolean',
             'sort' => 'nullable|integer|min:0|max:9999',
-            'description' => 'nullable|string|max:20000',
+            'description' => 'nullable|string|max:500000',
             'is_soldout' => 'nullable|boolean',
             'is_active' => 'nullable|boolean',
             'main_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:8192',
@@ -431,7 +451,7 @@ class ProductController extends Controller
         $product->safety_stock = (int) ($data['safety_stock'] ?? 0);
         $product->track_stock = $request->boolean('track_stock');
         $product->sort = (int) ($data['sort'] ?? 0);
-        $product->description = $data['description'] ?? null;
+        $product->description = RichTextSanitizer::clean($data['description'] ?? null);
         $product->is_soldout = $request->boolean('is_soldout');
         $product->is_active = $request->boolean('is_active');
         if (! $product->slug) {
