@@ -33,3 +33,6 @@ Thumbs.db
 /korsafety_logo_package
 *.pptx
 /products_*.csv
+
+# 브라우저 자동화(Playwright MCP) 임시 산출물
+/.playwright-mcp

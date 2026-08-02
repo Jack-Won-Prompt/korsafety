@@ -135,7 +135,11 @@
       "PowerShell(\"---VIEWS/manage---\")",
       "Bash(grep -v \"^\\\\s*$\")",
       "Bash(/e/xampp/php/php.exe -l app/Http/Controllers/Manage/ServiceRequestController.php)",
-      "Bash(/e/xampp/php/php.exe -l app/Mail/ServiceRequestResolvedMail.php)"
+      "Bash(/e/xampp/php/php.exe -l app/Mail/ServiceRequestResolvedMail.php)",
+      "Bash(git commit -m '@ *)",
+      "Bash(git commit *)",
+      "Bash(grep -rn '{!! *$\\\\?[a-zA-Z_>-]*content\\\\|{!! *$r->content\\\\|{!!.*->content' /e/xampp/htdocs/supportworks/resources/views)",
+      "Bash(/e/xampp/php/php.exe -l app/Support/RichTextSanitizer.php)"
     ],
     "additionalDirectories": [
       "C:\\Users\\82103\\AppData\\Local\\Temp\\claude\\e--xampp-htdocs-korsafety\\4e5d80e1-d885-43b7-9117-661c28b3f1d6\\scratchpad"
