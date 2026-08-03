@@ -20,6 +20,10 @@ class Setting extends Model
         'price_display_mode'   => 'ask',  // 가격 표시 방식: 'ask'=가격 문의 / 'price'=제품 가격 노출
         'maintenance_mode'     => '0',    // 유지보수 모드 (메인 본문을 안내 문구로 대체)
         'maintenance_message'  => '더 좋은 서비스를 위해서 준비중에 있습니다.',
+        // 모바일 앱 연락처 배너 (홈 상단·상품 상세, 탭하면 전화 연결)
+        'contact_banner_enabled' => '1',
+        'contact_banner_text'    => '안전제품 관련 제작 및 제품문의',
+        'contact_banner_phone'   => '02-2273-9533',
     ];
 
     public static function get(string $key, $default = null)

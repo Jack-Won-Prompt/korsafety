@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
@@ -34,6 +35,7 @@ Route::post('auth/login', [AuthController::class, 'login']);
 | 공개 카탈로그 (게스트 탐색 허용)
 |--------------------------------------------------------------------------
 */
+Route::get('config', [ConfigController::class, 'index']);
 Route::get('home', [ProductController::class, 'home']);
 Route::get('categories', [ProductController::class, 'categories']);
 Route::get('products', [ProductController::class, 'index']);

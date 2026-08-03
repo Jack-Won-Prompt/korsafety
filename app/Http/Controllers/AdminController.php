@@ -244,18 +244,32 @@ class AdminController extends Controller
             'price_display_mode'   => Setting::get('price_display_mode'),
             'maintenance_mode'     => Setting::bool('maintenance_mode'),
             'maintenance_message'  => Setting::get('maintenance_message'),
+            'contact_banner_enabled' => Setting::bool('contact_banner_enabled'),
+            'contact_banner_text'    => Setting::get('contact_banner_text'),
+            'contact_banner_phone'   => Setting::get('contact_banner_phone'),
         ];
         return view('admin.settings', compact('settings'));
     }
 
     public function updateSettings(Request $request)
     {
-        $request->validate(['maintenance_message' => 'nullable|string|max:200'], [], ['maintenance_message' => '안내 문구']);
+        $request->validate([
+            'maintenance_message' => 'nullable|string|max:200',
+            'contact_banner_text' => 'nullable|string|max:60',
+            'contact_banner_phone' => 'nullable|string|max:30',
+        ], [], [
+            'maintenance_message' => '안내 문구',
+            'contact_banner_text' => '배너 문구',
+            'contact_banner_phone' => '연락처',
+        ]);
 
         Setting::put('home_show_categories', $request->boolean('home_show_categories') ? '1' : '0');
         Setting::put('price_display_mode', $request->input('price_display_mode') === 'price' ? 'price' : 'ask');
         Setting::put('maintenance_mode', $request->boolean('maintenance_mode') ? '1' : '0');
         Setting::put('maintenance_message', trim((string) $request->input('maintenance_message')) ?: Setting::DEFAULTS['maintenance_message']);
+        Setting::put('contact_banner_enabled', $request->boolean('contact_banner_enabled') ? '1' : '0');
+        Setting::put('contact_banner_text', trim((string) $request->input('contact_banner_text')) ?: Setting::DEFAULTS['contact_banner_text']);
+        Setting::put('contact_banner_phone', trim((string) $request->input('contact_banner_phone')) ?: Setting::DEFAULTS['contact_banner_phone']);
         return redirect()->route('admin.settings')->with('status', '설정이 저장되었습니다.');
     }
 }
