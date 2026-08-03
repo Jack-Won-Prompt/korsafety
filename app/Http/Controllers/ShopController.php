@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Models\VisitLog;
 use Illuminate\Http\Request;
 
 class ShopController extends Controller
@@ -97,13 +98,15 @@ class ShopController extends Controller
         return view('shop.category', compact('category', 'products', 'categories', 'sort'));
     }
 
-    public function product(Product $product)
+    public function product(Request $request, Product $product)
     {
         // 미노출 상품은 고객에게 숨기고, 관리자는 미리보기 가능
         if (! $product->is_active) {
             $u = auth()->user();
             abort_unless($u && ($u->isHqAdmin() || $u->isSeller()), 404);
         }
+
+        VisitLog::recordProduct($request, $product);
 
         $product->load(['images', 'category']);
         $related = Product::visible()
@@ -125,6 +128,11 @@ class ShopController extends Controller
                 ->where(fn ($w) => $w->where('name', 'like', "%$q%")->orWhere('brand', 'like', "%$q%"))
                 ->orderByDesc('external_no')
                 ->paginate(24)->withQueryString();
+
+            // 첫 페이지에서만 기록 (페이지 넘김은 같은 검색으로 본다)
+            if ((int) $request->query('page', 1) === 1) {
+                VisitLog::recordSearch($request, $q, $products->total());
+            }
         }
         $categories = Category::active()->orderBy('sort')->get();
 

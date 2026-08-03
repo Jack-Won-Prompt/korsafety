@@ -36,3 +36,6 @@ Thumbs.db
 
 # 브라우저 자동화(Playwright MCP) 임시 산출물
 /.playwright-mcp
+
+# 로고 원본(대용량) — 웹 에셋은 public/brand/logo-wordmark*.png 사용
+/result_large_text.png

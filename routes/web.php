@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\InquiryController as AdminInquiry;
 use App\Http\Controllers\Admin\OrderController as AdminOrder;
 use App\Http\Controllers\Admin\OrderStatementController as AdminStatement;
 use App\Http\Controllers\Admin\TaxInvoiceController as AdminTaxInvoice;
+use App\Http\Controllers\Admin\VisitLogController as AdminVisitLog;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\InquiryController;
@@ -103,6 +104,8 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
     Route::get('cashbacks', [AdminController::class, 'cashbacks'])->name('admin.cashbacks');
     Route::post('cashbacks/{order}/pay', [AdminController::class, 'payCashback'])->name('admin.cashbacks.pay');
     Route::get('login-logs', [AdminController::class, 'loginLogs'])->name('admin.login-logs');
+    Route::get('visits', [AdminVisitLog::class, 'index'])->name('admin.visits');
+    Route::post('visits/purge', [AdminVisitLog::class, 'purge'])->name('admin.visits.purge');
     Route::get('settings', [AdminController::class, 'settings'])->name('admin.settings');
     Route::post('settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
 
