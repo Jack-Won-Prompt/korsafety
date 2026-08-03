@@ -24,7 +24,17 @@ class Setting extends Model
         'contact_banner_enabled' => '1',
         'contact_banner_text'    => '안전제품 관련 제작 및 제품문의',
         'contact_banner_phone'   => '02-2273-9533',
+        // SR 접수 알림 수신 주소 (쉼표로 여러 명 지정 가능)
+        'sr_notify_email'        => 'jack@withworks.co.kr',
     ];
+
+    /** 쉼표로 구분된 설정값을 배열로 (빈 값 제거) */
+    public static function emails(string $key): array
+    {
+        $raw = (string) static::get($key);
+
+        return array_values(array_filter(array_map('trim', explode(',', $raw)), fn ($v) => filter_var($v, FILTER_VALIDATE_EMAIL)));
+    }
 
     public static function get(string $key, $default = null)
     {

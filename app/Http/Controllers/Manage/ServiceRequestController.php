@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Manage;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ServiceRequestCreatedMail;
 use App\Mail\ServiceRequestResolvedMail;
 use App\Models\ServiceRequest;
 use App\Models\ServiceRequestReply;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -113,7 +115,11 @@ class ServiceRequestController extends Controller
             'status' => 'open',
         ]);
 
-        return redirect()->route('manage.sr.show', $sr)->with('status', 'SR '.$sr->sr_no.' 이(가) 접수되었습니다.');
+        $notify = $this->notifyCreated($sr);
+        $redirect = redirect()->route('manage.sr.show', $sr)
+            ->with('status', 'SR '.$sr->sr_no.' 이(가) 접수되었습니다.'.($notify['ok'] ? ' '.$notify['message'] : ''));
+
+        return $notify['ok'] ? $redirect : $redirect->with('error', $notify['message']);
     }
 
     public function show(ServiceRequest $serviceRequest)
@@ -187,6 +193,25 @@ class ServiceRequestController extends Controller
         }
 
         return back()->with('status', $message);
+    }
+
+    /** SR 접수 알림 메일 — 사이트 설정의 수신 주소로 발송 (실패해도 접수는 유지) */
+    private function notifyCreated(ServiceRequest $sr): array
+    {
+        $to = Setting::emails('sr_notify_email');
+        if (! $to) {
+            return ['ok' => false, 'message' => 'SR 알림 수신 주소가 설정되지 않아 접수 알림 메일은 보내지 못했습니다.'];
+        }
+
+        try {
+            Mail::to($to)->send(new ServiceRequestCreatedMail($sr));
+
+            return ['ok' => true, 'message' => implode(', ', $to).' 로 접수 알림을 보냈습니다.'];
+        } catch (\Throwable $e) {
+            report($e);
+
+            return ['ok' => false, 'message' => 'SR 접수 알림 메일 발송에 실패했습니다: '.$e->getMessage()];
+        }
     }
 
     /** 처리완료 안내 메일 발송 (실패해도 상태 변경은 유지) */

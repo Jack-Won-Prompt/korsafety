@@ -247,6 +247,7 @@ class AdminController extends Controller
             'contact_banner_enabled' => Setting::bool('contact_banner_enabled'),
             'contact_banner_text'    => Setting::get('contact_banner_text'),
             'contact_banner_phone'   => Setting::get('contact_banner_phone'),
+            'sr_notify_email'        => Setting::get('sr_notify_email'),
         ];
         return view('admin.settings', compact('settings'));
     }
@@ -257,10 +258,12 @@ class AdminController extends Controller
             'maintenance_message' => 'nullable|string|max:200',
             'contact_banner_text' => 'nullable|string|max:60',
             'contact_banner_phone' => 'nullable|string|max:30',
+            'sr_notify_email' => 'nullable|string|max:300',
         ], [], [
             'maintenance_message' => '안내 문구',
             'contact_banner_text' => '배너 문구',
             'contact_banner_phone' => '연락처',
+            'sr_notify_email' => 'SR 알림 수신 주소',
         ]);
 
         Setting::put('home_show_categories', $request->boolean('home_show_categories') ? '1' : '0');
@@ -270,6 +273,7 @@ class AdminController extends Controller
         Setting::put('contact_banner_enabled', $request->boolean('contact_banner_enabled') ? '1' : '0');
         Setting::put('contact_banner_text', trim((string) $request->input('contact_banner_text')) ?: Setting::DEFAULTS['contact_banner_text']);
         Setting::put('contact_banner_phone', trim((string) $request->input('contact_banner_phone')) ?: Setting::DEFAULTS['contact_banner_phone']);
+        Setting::put('sr_notify_email', trim((string) $request->input('sr_notify_email')) ?: Setting::DEFAULTS['sr_notify_email']);
         return redirect()->route('admin.settings')->with('status', '설정이 저장되었습니다.');
     }
 }
