@@ -75,6 +75,9 @@
             @endforeach
         </div>
     </section>
+
+    {{-- 안전제품 제작·문의 연락처 (모바일 앱 홈 배너와 동일) --}}
+    @include('partials.contact-banner', ['variant' => 'wide'])
 </div>
 
 @if($showCategories)

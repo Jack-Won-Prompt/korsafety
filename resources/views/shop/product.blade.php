@@ -48,8 +48,9 @@
                         <span class="now">{{ number_format($final) }}<span class="won">원</span></span>
                         @if($product->has_discount)<span class="was">{{ number_format($product->price) }}원</span>@endif
                     @else
+                        @php $askPhone = trim((string) \App\Models\Setting::get('contact_banner_phone')) ?: '02-2273-9533'; @endphp
                         <span class="ask">가격 문의</span>
-                        <a href="tel:02-2273-9533" class="btn btn-ghost btn-sm" style="margin-left:12px">☎ 02-2273-9533</a>
+                        <a href="tel:{{ preg_replace('/[^0-9+]/', '', $askPhone) }}" class="btn btn-ghost btn-sm" style="margin-left:12px">☎ {{ $askPhone }}</a>
                     @endif
                 </div>
             </div>
@@ -76,6 +77,9 @@
                     <a href="{{ route('cart.index') }}" class="btn btn-primary btn-lg btn-block">바로 구매</a>
                 </div>
             </form>
+
+            {{-- 안전제품 제작·문의 연락처 (모바일 앱 상품 상세 배너와 동일) --}}
+            @include('partials.contact-banner', ['variant' => 'inline'])
 
             <div class="pd-trust">
                 <span class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z"/></svg> 안전인증 정품</span>

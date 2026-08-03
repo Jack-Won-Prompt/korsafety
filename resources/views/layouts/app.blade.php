@@ -30,12 +30,9 @@
             <button class="icon-btn menu-btn" aria-label="메뉴">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round"/></svg>
             </button>
-            <a href="{{ route('home') }}" class="brand ks-logo" aria-label="(주)한국안전">
-                <span class="ks-mark">KS</span>
-                <span class="ks-text">
-                    <span class="ks-word">(주)한국<em>안전</em></span>
-                    <span class="ks-tag">SAFETY LIFE PARTNER</span>
-                </span>
+            <a href="{{ route('home') }}" class="brand" aria-label="(주)한국안전 산업안전용품 전문몰">
+                <img src="{{ asset('brand/logo-wordmark.png') }}?v={{ @filemtime(public_path('brand/logo-wordmark.png')) }}"
+                     alt="(주)한국안전 · 산업안전용품 전문몰" class="brand-wordmark">
             </a>
 
             <form class="search-form" action="{{ route('search') }}" method="get">
@@ -104,13 +101,8 @@
     <div class="wrap">
         <div class="footer-top">
             <div class="footer-brand">
-                <div class="ks-logo ks-logo--light" style="margin-bottom:4px">
-                    <span class="ks-mark">KS</span>
-                    <span class="ks-text">
-                        <span class="ks-word">(주)한국<em>안전</em></span>
-                        <span class="ks-tag">SAFETY LIFE PARTNER</span>
-                    </span>
-                </div>
+                <img src="{{ asset('brand/logo-wordmark-light.png') }}?v={{ @filemtime(public_path('brand/logo-wordmark-light.png')) }}"
+                     alt="(주)한국안전 · 산업안전용품 전문몰" class="brand-wordmark brand-wordmark--footer">
                 <p>산업 현장의 안전을 책임지는 대한민국 대표 안전용품 전문몰. 안전화부터 워크웨어, 안전시설물까지 검증된 정품만을 합리적인 가격으로 제공합니다.</p>
             </div>
             <div class="fcol">
