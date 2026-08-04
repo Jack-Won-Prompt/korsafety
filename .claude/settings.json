@@ -146,7 +146,8 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -G --data-urlencode \"q=존재하지않는상품xyz\" -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) Chrome/150\" \"http://localhost/korsafety/search\")",
       "Bash(/e/xampp/php/php.exe -l app/Http/Controllers/Admin/VisitLogController.php)",
       "Bash(grep -oE \"\\(production|local\\)\\\\.ERROR:[^{]{0,200}\")",
-      "Bash(grep -oE \"^\\\\[[0-9-]{10} [0-9:]{8}\\\\] \\(production|local\\)\\\\.ERROR: [^{]{0,120}\" storage/logs/laravel.log)"
+      "Bash(grep -oE \"^\\\\[[0-9-]{10} [0-9:]{8}\\\\] \\(production|local\\)\\\\.ERROR: [^{]{0,120}\" storage/logs/laravel.log)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost/korsafety/product/2292)"
     ],
     "additionalDirectories": [
       "C:\\Users\\82103\\AppData\\Local\\Temp\\claude\\e--xampp-htdocs-korsafety\\4e5d80e1-d885-43b7-9117-661c28b3f1d6\\scratchpad"

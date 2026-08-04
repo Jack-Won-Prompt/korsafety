@@ -267,14 +267,20 @@ class ProductController extends Controller
     public function saveImage(Request $request, Product $product)
     {
         $this->authorizeOwner($product);
+        $fail = function (string $message) use ($request) {
+            return $request->wantsJson()
+                ? response()->json(['message' => $message], 422)
+                : back()->withErrors(['image' => $message]);
+        };
+
         $data = (string) $request->input('image', '');
         if (! preg_match('/^data:image\/(png|jpeg|jpg|webp);base64,/', $data, $m)) {
-            return back()->withErrors(['image' => '이미지 데이터가 올바르지 않습니다.']);
+            return $fail('이미지 데이터가 올바르지 않습니다.');
         }
         $ext = $m[1] === 'jpeg' ? 'jpg' : $m[1];
         $bin = base64_decode(substr($data, strpos($data, ',') + 1), true);
         if ($bin === false || strlen($bin) < 100) {
-            return back()->withErrors(['image' => '이미지 저장에 실패했습니다.']);
+            return $fail('이미지 저장에 실패했습니다.');
         }
 
         $dir = public_path('shop/uploads/'.$this->sellerId());
@@ -282,7 +288,13 @@ class ProductController extends Controller
         $name = 'edit_'.date('Ymd_His').'_'.Str::lower(Str::random(5)).'.'.$ext;
         file_put_contents($dir.'/'.$name, $bin);
 
-        $product->update(['main_image' => '/shop/uploads/'.$this->sellerId().'/'.$name]);
+        $path = '/shop/uploads/'.$this->sellerId().'/'.$name;
+        $product->update(['main_image' => $path]);
+
+        // 모달에서 저장한 경우 새 이미지 주소만 돌려주고 화면은 그대로 둔다
+        if ($request->wantsJson()) {
+            return response()->json(['url' => asset($path), 'message' => '이미지가 편집·저장되었습니다.']);
+        }
 
         return redirect()->route('manage.products.edit', $product)->with('status', '이미지가 편집·저장되었습니다.');
     }

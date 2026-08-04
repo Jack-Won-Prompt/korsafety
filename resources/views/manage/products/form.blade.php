@@ -115,9 +115,13 @@
                 <div class="panel-h"><h2>대표 이미지</h2></div>
                 <div class="panel-b">
                     @if($product->main_image)
-                        <div class="up-thumb" style="width:100%;height:280px;margin-bottom:12px"><img src="{{ asset($product->main_image) }}" alt=""></div>
+                        <div class="up-thumb" style="width:100%;height:280px;margin-bottom:12px">
+                            <img src="{{ asset($product->main_image) }}" alt="" data-main-preview>
+                        </div>
                         @if($editing)
-                            <a href="{{ route('manage.products.image', $product) }}" class="btn btn-sm" style="width:100%;margin-bottom:10px">✎ 이미지 편집 (회전·밝기·대비·크롭)</a>
+                            <button type="button" class="btn btn-sm" style="width:100%;margin-bottom:10px" onclick="openImageModal()">
+                                ✎ 이미지 편집 (회전·밝기·대비·크롭)
+                            </button>
                         @endif
                     @endif
                     <label class="filebox" id="mainDrop">
@@ -226,6 +230,22 @@
     </div>
 </form>
 
+{{-- 대표 이미지 편집 모달 (상품 폼 바깥에 둬야 폼 중첩이 되지 않는다) --}}
+@if($editing && $product->main_image)
+<div class="modal" id="imgModal" hidden aria-modal="true" role="dialog" aria-label="대표 이미지 편집">
+    <div class="modal-back" onclick="closeImageModal()"></div>
+    <div class="modal-card">
+        <div class="modal-h">
+            <div><h2>대표 이미지 편집</h2><div class="sub">회전 · 밝기 · 대비 · 크롭 — 저장하면 대표 이미지가 교체됩니다</div></div>
+            <button type="button" class="modal-x" onclick="closeImageModal()" aria-label="닫기">✕</button>
+        </div>
+        <div class="modal-b">
+            @include('manage.products._image-editor', ['product' => $product, 'ajax' => true])
+        </div>
+    </div>
+</div>
+@endif
+
 @push('styles')
 <link rel="stylesheet" href="https://cdn.quilljs.com/1.3.7/quill.snow.css">
 <style>
@@ -257,6 +277,32 @@
         boxes.forEach(function(b){ b.checked = on; b.closest('.up-thumb').style.opacity = on ? 0.3 : 1; });
     }
     window.markAllDetail = markAllDetail;
+
+    // 대표 이미지 편집 모달
+    window.openImageModal = function(){
+        var m = document.getElementById('imgModal');
+        if(!m) return;
+        m.hidden = false;
+        document.body.style.overflow = 'hidden';
+    };
+    window.closeImageModal = function(){
+        var m = document.getElementById('imgModal');
+        if(!m) return;
+        m.hidden = true;
+        document.body.style.overflow = '';
+    };
+    document.addEventListener('keydown', function(e){
+        if(e.key === 'Escape') window.closeImageModal();
+    });
+
+    // 저장 완료 알림
+    window.manageToast = function(msg){
+        var t = document.createElement('div');
+        t.className = 'm-toast';
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(function(){ t.remove(); }, 2600);
+    };
 
     // 옵션 행 추가
     var optIndex = document.querySelectorAll('#optBody tr').length;
