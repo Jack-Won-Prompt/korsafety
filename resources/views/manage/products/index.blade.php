@@ -103,6 +103,8 @@
                     <option value="deactivate">노출 중지</option>
                     <option value="track_on">재고 관리 켜기</option>
                     <option value="track_off">재고 관리 끄기</option>
+                    <option value="best_on">베스트 셀러 지정</option>
+                    <option value="best_off">베스트 셀러 해제</option>
                     <option value="category">카테고리 이동</option>
                     <option value="delete">삭제</option>
                 </select>
@@ -155,6 +157,7 @@
                     <td>
                         @if($p->is_soldout)<span class="badge off">품절</span>@else<span class="badge ok">판매중</span>@endif
                         @if(! $p->is_active)<span class="badge warn">미노출</span>@endif
+                        @if($p->is_best)<span class="badge hq">베스트</span>@endif
                     </td>
                     <td>
                         <div style="display:flex;gap:6px">

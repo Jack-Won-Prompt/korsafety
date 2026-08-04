@@ -50,13 +50,20 @@ class ShopController extends Controller
             ]);
         }
 
-        $categories = Category::active()->orderBy('sort')->withCount('products')->get();
+        $categories = Category::active()->roots()->orderBy('sort')->withCount('products')->get();
 
+        // 관리자가 고른 베스트 셀러 우선, 지정이 없으면 예전처럼 임의 노출
         $best = Product::query()->visible()
             ->whereNotNull('main_image')
-            ->where('is_soldout', false)
-            ->inRandomOrder()
-            ->limit(8)->get();
+            ->where('is_best', true)
+            ->orderBy('best_sort')->limit(8)->get();
+        if ($best->isEmpty()) {
+            $best = Product::query()->visible()
+                ->whereNotNull('main_image')
+                ->where('is_soldout', false)
+                ->inRandomOrder()
+                ->limit(8)->get();
+        }
 
         $newIn = Product::query()->visible()
             ->whereNotNull('main_image')
@@ -82,7 +89,12 @@ class ShopController extends Controller
     public function category(Request $request, Category $category)
     {
         $sort = $request->query('sort', 'recommended');
-        $query = $category->products()->visible()->whereNotNull('main_image');
+
+        // 대분류를 보면 소분류 상품까지 함께 보여준다
+        $categoryIds = $category->children()->pluck('id')->push($category->id)->all();
+        $query = Product::query()->visible()
+            ->whereHas('categories', fn ($w) => $w->whereIn('categories.id', $categoryIds))
+            ->whereNotNull('main_image');
 
         match ($sort) {
             'price_asc'  => $query->orderByRaw('COALESCE(sale_price, price) asc'),
@@ -93,9 +105,14 @@ class ShopController extends Controller
         };
 
         $products = $query->paginate(24)->withQueryString();
-        $categories = Category::active()->orderBy('sort')->get();
+        $categories = Category::active()->roots()->orderBy('sort')->get();
+        // 형제 소분류 (대분류를 보면 자기 하위, 소분류를 보면 같은 부모의 하위)
+        $siblings = Category::active()
+            ->where('parent_id', $category->parent_id ?: $category->id)
+            ->orderBy('sort')->orderBy('name')->get();
+        $parent = $category->parent;
 
-        return view('shop.category', compact('category', 'products', 'categories', 'sort'));
+        return view('shop.category', compact('category', 'products', 'categories', 'siblings', 'parent', 'sort'));
     }
 
     public function product(Request $request, Product $product)
@@ -108,7 +125,7 @@ class ShopController extends Controller
 
         VisitLog::recordProduct($request, $product);
 
-        $product->load(['images', 'category']);
+        $product->load(['images', 'category', 'activeOptions']);
         $related = Product::visible()
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
@@ -134,7 +151,7 @@ class ShopController extends Controller
                 VisitLog::recordSearch($request, $q, $products->total());
             }
         }
-        $categories = Category::active()->orderBy('sort')->get();
+        $categories = Category::active()->roots()->orderBy('sort')->get();
 
         return view('shop.search', compact('q', 'products', 'categories'));
     }

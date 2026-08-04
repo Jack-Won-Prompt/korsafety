@@ -48,8 +48,14 @@
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': csrf(), 'Accept': 'application/json' },
         body: new FormData(pdForm)
-      }).then(function (r) { return r.json(); })
-        .then(function (d) { updateCartBadge(d.count); toast(d.message || '장바구니에 담았습니다.'); });
+      }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (res) {
+          // 옵션 미선택 등 서버가 거절한 경우 사유를 그대로 보여준다
+          if (!res.ok) { toast(res.d.message || '장바구니에 담지 못했습니다.'); return; }
+          updateCartBadge(res.d.count);
+          toast(res.d.message || '장바구니에 담았습니다.');
+        })
+        .catch(function () { toast('오류가 발생했습니다.'); });
     });
   }
 

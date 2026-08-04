@@ -16,7 +16,10 @@
                     <div>
                         @if($p->brand)<div class="cl-brand">{{ $p->brand }}</div>@endif
                         <a href="{{ route('product.show', $p) }}" class="cl-name">{{ $p->name }}</a>
-                        <form action="{{ route('cart.update', $p) }}" method="post" style="display:inline-flex">
+                        @if(!empty($item['options']))
+                            <div class="cl-opt">{{ implode(' · ', $item['options']) }}</div>
+                        @endif
+                        <form action="{{ route('cart.update', $item['key']) }}" method="post" style="display:inline-flex">
                             @csrf @method('PATCH')
                             <div class="qty">
                                 <button type="button" data-step="down">−</button>
@@ -27,7 +30,8 @@
                     </div>
                     <div class="cl-right">
                         <div class="cl-price">{{ number_format($item['line']) }}원</div>
-                        <form action="{{ route('cart.remove', $p) }}" method="post">
+                        @if($item['qty'] > 1)<div class="cl-unit">개당 {{ number_format($item['unit']) }}원</div>@endif
+                        <form action="{{ route('cart.remove', $item['key']) }}" method="post">
                             @csrf @method('DELETE')
                             <button type="submit" class="link-remove">삭제</button>
                         </form>

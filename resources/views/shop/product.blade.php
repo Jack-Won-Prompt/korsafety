@@ -64,6 +64,29 @@
 
             <form id="pd-add-form" action="{{ route('cart.add', $product) }}" method="post" data-ajax="1">
                 @csrf
+                @php $options = $product->activeOptions; @endphp
+                @if($options->count())
+                    @php $groups = $options->groupBy(fn ($o) => $o->group_name ?: '옵션'); @endphp
+                    <div class="pd-options">
+                        @foreach($groups as $groupName => $items)
+                            <label class="pd-opt">
+                                <span class="k">{{ $groupName }}</span>
+                                <select name="options[{{ $loop->index }}]" class="pd-opt-select" required data-base="{{ (int) $final }}">
+                                    <option value="">{{ $groupName }} 선택</option>
+                                    @foreach($items as $opt)
+                                        <option value="{{ $opt->id }}" data-extra="{{ $opt->extra_price }}"
+                                                @if($opt->stock <= 0 && $product->track_stock) disabled @endif>
+                                            {{ $opt->label }}@if($opt->stock <= 0 && $product->track_stock) (품절)@endif
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </label>
+                        @endforeach
+                        @if(\App\Models\Setting::get('price_display_mode') === 'price' && $final)
+                            <div class="pd-opt-total">선택 상품 금액 <b id="pdOptTotal">{{ number_format($final) }}원</b></div>
+                        @endif
+                    </div>
+                @endif
                 <div style="display:flex;align-items:center;gap:14px;margin:22px 0 4px">
                     <span style="font-weight:700;font-size:14px">수량</span>
                     <div class="qty">
@@ -107,18 +130,6 @@
             </div>
         @endif
 
-        <div class="pd-spec">
-            <h3>상품 정보</h3>
-            <dl>
-                <div><dt>상품명</dt><dd>{{ $product->name }}</dd></div>
-                <div><dt>브랜드</dt><dd>{{ $product->brand ?: '자체/기타' }}</dd></div>
-                <div><dt>상품코드</dt><dd>YW-{{ $product->external_no }}</dd></div>
-                <div><dt>카테고리</dt><dd>{{ $product->category->name ?? '-' }}</dd></div>
-                <div><dt>안전인증</dt><dd>KCs 안전인증 정품</dd></div>
-                <div><dt>판매가</dt><dd>{{ \App\Models\Setting::get('price_display_mode') === 'price' && $final ? number_format($final).'원' : '가격 문의 (02-2273-9533)' }}</dd></div>
-            </dl>
-        </div>
-
         <div class="pd-notice">
             <div class="col">
                 <h3>배송 안내</h3>
@@ -154,4 +165,42 @@
     </section>
     @endif
 </div>
+
+@if($product->activeOptions->count())
+<script>
+(function(){
+    var selects = document.querySelectorAll('.pd-opt-select');
+    var total = document.getElementById('pdOptTotal');
+    if(!selects.length) return;
+    var base = parseInt(selects[0].dataset.base || '0', 10) || 0;
+
+    function refresh(){
+        if(!total) return;
+        var extra = 0;
+        selects.forEach(function(s){
+            var opt = s.options[s.selectedIndex];
+            if(opt && opt.value) extra += parseInt(opt.dataset.extra || '0', 10) || 0;
+        });
+        total.textContent = Math.max(0, base + extra).toLocaleString('ko-KR') + '원';
+    }
+    selects.forEach(function(s){ s.addEventListener('change', refresh); });
+
+    // 옵션을 고르지 않고 담는 것 방지
+    var form = document.getElementById('pd-add-form');
+    if(form){
+        form.addEventListener('submit', function(e){
+            for(var i = 0; i < selects.length; i++){
+                if(!selects[i].value){
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    alert('옵션을 선택해 주세요.');
+                    selects[i].focus();
+                    return;
+                }
+            }
+        }, true);
+    }
+})();
+</script>
+@endif
 @endsection

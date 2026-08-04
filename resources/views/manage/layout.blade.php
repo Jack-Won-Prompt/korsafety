@@ -63,6 +63,7 @@
                 <a href="{{ route('admin.cashbacks') }}" class="{{ request()->routeIs('admin.cashbacks') ? 'active' : '' }}">{!! $ic($navCoin) !!} 캐쉬백 정산</a>
                 <a href="{{ route('manage.products.index') }}" class="{{ request()->routeIs('manage.products.*') ? 'active' : '' }}">{!! $ic($navBox) !!} 상품 관리</a>
                 <a href="{{ route('manage.categories.index') }}" class="{{ request()->routeIs('manage.categories.*') ? 'active' : '' }}">{!! $ic('<path d="M3 5h8v6H3zM13 5h8v4h-8zM13 13h8v6h-8zM3 15h8v4H3z"/>') !!} 상품 카테고리</a>
+                <a href="{{ route('admin.bestsellers') }}" class="{{ request()->routeIs('admin.bestsellers*') ? 'active' : '' }}">{!! $ic('<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z"/>') !!} 베스트 셀러</a>
                 <a href="{{ route('manage.orders') }}" class="{{ request()->routeIs('manage.orders') ? 'active' : '' }}">{!! $ic($navBag) !!} 주문 내역</a>
                 <a href="{{ route('admin.orders.index') }}" class="{{ request()->routeIs('admin.orders.*') ? 'active' : '' }}">{!! $ic('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/>') !!} 주문·명세서 관리</a>
                 <a href="{{ route('admin.taxinvoice.index') }}" class="{{ request()->routeIs('admin.taxinvoice.*') ? 'active' : '' }}">{!! $ic('<rect x="4" y="3" width="16" height="18" rx="1"/><path d="M8 7h8M8 11h8M8 15h5"/>') !!} 세금계산서</a>

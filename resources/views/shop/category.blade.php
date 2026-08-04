@@ -5,6 +5,9 @@
 <div class="wrap">
     <div class="crumb">
         <a href="{{ route('home') }}">홈</a><span class="sep">/</span>
+        @if($parent)
+            <a href="{{ route('category.show', $parent) }}">{{ $parent->name }}</a><span class="sep">/</span>
+        @endif
         <span>{{ $category->name }}</span>
     </div>
 
@@ -20,6 +23,17 @@
             @endforeach
         </div>
     </div>
+
+    {{-- 소분류 --}}
+    @if(($siblings ?? collect())->count())
+        @php $top = $parent ?: $category; @endphp
+        <div class="cat-chips">
+            <a href="{{ route('category.show', $top) }}" class="{{ $category->id === $top->id ? 'on' : '' }}">{{ $top->name }} 전체</a>
+            @foreach($siblings as $sub)
+                <a href="{{ route('category.show', $sub) }}" class="{{ $category->id === $sub->id ? 'on' : '' }}">{{ $sub->name }}</a>
+            @endforeach
+        </div>
+    @endif
 
     @if($products->count())
         <div class="p-grid">

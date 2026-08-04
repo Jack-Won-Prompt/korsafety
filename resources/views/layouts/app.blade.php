@@ -86,7 +86,21 @@
             @else
                 <a href="{{ route('home') }}" class="all">전체 카테고리</a>
                 @foreach($navCategories as $cat)
-                    <a href="{{ route('category.show', $cat) }}" class="{{ (isset($category) && $category->id === $cat->id) ? 'active' : '' }}">{{ $cat->name }}</a>
+                    @php $kids = $cat->children ?? collect(); @endphp
+                    <div class="catnav-item {{ $kids->count() ? 'has-sub' : '' }}">
+                        <a href="{{ route('category.show', $cat) }}"
+                           class="{{ (isset($category) && ($category->id === $cat->id || $category->parent_id === $cat->id)) ? 'active' : '' }}">
+                            {{ $cat->name }}@if($kids->count())<span class="caret" aria-hidden="true">▾</span>@endif
+                        </a>
+                        @if($kids->count())
+                            <div class="subnav">
+                                @foreach($kids as $kid)
+                                    <a href="{{ route('category.show', $kid) }}"
+                                       class="{{ (isset($category) && $category->id === $kid->id) ? 'on' : '' }}">{{ $kid->name }}</a>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
                 @endforeach
             @endif
         </div>
@@ -150,6 +164,9 @@
                 <span class="disabled" aria-disabled="true">{{ $cat->name }}</span>
             @else
                 <a href="{{ route('category.show', $cat) }}">{{ $cat->name }}</a>
+                @foreach($cat->children ?? [] as $kid)
+                    <a href="{{ route('category.show', $kid) }}" class="sub">└ {{ $kid->name }}</a>
+                @endforeach
             @endif
         @endforeach
         <a href="{{ route('cart.index') }}">장바구니</a>

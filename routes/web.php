@@ -7,6 +7,7 @@ use App\Http\Controllers\Agent\OrderController as AgentOrder;
 use App\Http\Controllers\Purchaser\BuyerController as PurchaserBuyer;
 use App\Http\Controllers\Purchaser\DashboardController as PurchaserDashboard;
 use App\Http\Controllers\Purchaser\OrderController as PurchaserOrder;
+use App\Http\Controllers\Admin\BestSellerController as AdminBestSeller;
 use App\Http\Controllers\Admin\InquiryController as AdminInquiry;
 use App\Http\Controllers\Admin\OrderController as AdminOrder;
 use App\Http\Controllers\Admin\OrderStatementController as AdminStatement;
@@ -33,8 +34,9 @@ Route::get('/search', [ShopController::class, 'search'])->name('search');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.add');
-Route::patch('/cart/update/{product}', [CartController::class, 'update'])->name('cart.update');
-Route::delete('/cart/remove/{product}', [CartController::class, 'remove'])->name('cart.remove');
+// {key}는 상품 id 또는 "상품id:옵션id" 형태 (옵션별로 장바구니 줄이 나뉜다)
+Route::patch('/cart/update/{key}', [CartController::class, 'update'])->name('cart.update');
+Route::delete('/cart/remove/{key}', [CartController::class, 'remove'])->name('cart.remove');
 
 Route::get('/category/{category}', [ShopController::class, 'category'])->name('category.show');
 Route::get('/product/{product}', [ShopController::class, 'product'])->name('product.show');
@@ -104,6 +106,13 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
     Route::get('cashbacks', [AdminController::class, 'cashbacks'])->name('admin.cashbacks');
     Route::post('cashbacks/{order}/pay', [AdminController::class, 'payCashback'])->name('admin.cashbacks.pay');
     Route::get('login-logs', [AdminController::class, 'loginLogs'])->name('admin.login-logs');
+    // 홈 베스트 셀러 진열
+    Route::get('best-sellers', [AdminBestSeller::class, 'index'])->name('admin.bestsellers');
+    Route::post('best-sellers/add', [AdminBestSeller::class, 'add'])->name('admin.bestsellers.add');
+    Route::post('best-sellers/reorder', [AdminBestSeller::class, 'reorder'])->name('admin.bestsellers.reorder');
+    Route::post('best-sellers/{product}/move', [AdminBestSeller::class, 'move'])->name('admin.bestsellers.move');
+    Route::post('best-sellers/{product}/remove', [AdminBestSeller::class, 'remove'])->name('admin.bestsellers.remove');
+
     Route::get('visits', [AdminVisitLog::class, 'index'])->name('admin.visits');
     Route::post('visits/purge', [AdminVisitLog::class, 'purge'])->name('admin.visits.purge');
     Route::get('settings', [AdminController::class, 'settings'])->name('admin.settings');

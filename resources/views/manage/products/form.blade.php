@@ -149,6 +149,74 @@
                     </label>
                 </div>
             </div>
+
+            <div class="panel">
+                <div class="panel-h">
+                    <div><h2>상세 이미지</h2><div class="sub">상품 상세페이지 본문에 세로로 이어붙여 표시됩니다</div></div>
+                    @if($editing && $product->detailImages->count())
+                        <button type="button" class="btn btn-sm" onclick="markAllDetail()">전체 선택 삭제</button>
+                    @endif
+                </div>
+                <div class="panel-b">
+                    @if($editing && $product->detailImages->count())
+                        <div class="up-grid" id="detailGrid">
+                            @foreach($product->detailImages as $img)
+                                <div class="up-thumb">
+                                    <img src="{{ asset($img->path) }}" alt="">
+                                    <label title="삭제"><input type="checkbox" class="rmDetail" name="remove_images[]" value="{{ $img->id }}" hidden onchange="this.closest('.up-thumb').style.opacity=this.checked?0.3:1">✕</label>
+                                </div>
+                            @endforeach
+                        </div>
+                        <div class="hint">총 {{ $product->detailImages->count() }}장 · ✕ 클릭 시 저장할 때 삭제됩니다.</div>
+                    @else
+                        <div class="hint">등록된 상세 이미지가 없습니다.</div>
+                    @endif
+                    <label class="filebox" style="margin-top:10px">
+                        <input type="file" name="detail_images[]" accept="image/*" multiple hidden id="detInput">
+                        <span id="detLabel">상세 이미지 추가 (여러 장 선택 가능)</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- 상품 옵션 --}}
+    <div class="panel">
+        <div class="panel-h">
+            <div><h2>상품 옵션</h2><div class="sub">사이즈·색상 등 선택지와 추가 금액. 옵션이 있으면 고객이 반드시 선택해야 장바구니에 담깁니다.</div></div>
+            <button type="button" class="btn btn-sm btn-accent" onclick="addOptionRow()">+ 옵션 추가</button>
+        </div>
+        <div class="panel-b">
+            <table class="table" id="optTable">
+                <thead><tr>
+                    <th style="width:170px">옵션 구분</th>
+                    <th>선택지 <span class="req">*</span></th>
+                    <th style="width:140px">추가 금액</th>
+                    <th style="width:110px">재고</th>
+                    <th style="width:80px">사용</th>
+                    <th style="width:70px">삭제</th>
+                </tr></thead>
+                <tbody id="optBody">
+                    @foreach(old('options', $editing ? $product->options->map(fn($o) => [
+                        'id' => $o->id, 'group_name' => $o->group_name, 'name' => $o->name,
+                        'extra_price' => $o->extra_price, 'stock' => $o->stock, 'is_active' => $o->is_active ? 1 : 0,
+                    ])->all() : []) as $i => $row)
+                        <tr>
+                            <td><input type="hidden" name="options[{{ $i }}][id]" value="{{ $row['id'] ?? '' }}">
+                                <input class="input" style="height:36px" name="options[{{ $i }}][group_name]" value="{{ $row['group_name'] ?? '' }}" placeholder="예) 사이즈"></td>
+                            <td><input class="input" style="height:36px" name="options[{{ $i }}][name]" value="{{ $row['name'] ?? '' }}" placeholder="예) 260mm"></td>
+                            <td><input class="input" style="height:36px;text-align:right" type="number" name="options[{{ $i }}][extra_price]" value="{{ $row['extra_price'] ?? 0 }}"></td>
+                            <td><input class="input" style="height:36px;text-align:right" type="number" min="0" name="options[{{ $i }}][stock]" value="{{ $row['stock'] ?? 0 }}"></td>
+                            <td style="text-align:center"><input type="checkbox" name="options[{{ $i }}][is_active]" value="1" {{ ($row['is_active'] ?? 1) ? 'checked' : '' }}></td>
+                            <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove()">삭제</button></td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            <div class="hint" style="margin-top:10px">
+                추가 금액은 판매가에 더해집니다(할인가가 있으면 할인가 기준). 음수도 넣을 수 있습니다.<br>
+                옵션 구분이 같은 선택지끼리 하나의 선택 상자로 묶입니다. 비워 두면 ‘옵션’으로 표시됩니다.
+            </div>
         </div>
     </div>
 
@@ -177,6 +245,36 @@
     if(mi) mi.addEventListener('change',function(){document.getElementById('mainLabel').textContent=this.files[0]?('선택됨: '+this.files[0].name):'대표 이미지 업로드 (클릭)';});
     var gi=document.getElementById('galInput');
     if(gi) gi.addEventListener('change',function(){document.getElementById('galLabel').textContent=this.files.length?(this.files.length+'장 선택됨'):'갤러리 이미지 추가';});
+    var di=document.getElementById('detInput');
+    if(di) di.addEventListener('change',function(){document.getElementById('detLabel').textContent=this.files.length?(this.files.length+'장 선택됨'):'상세 이미지 추가';});
+
+    // 상세 이미지 전체 삭제 표시
+    function markAllDetail(){
+        var boxes = document.querySelectorAll('.rmDetail');
+        if(!boxes.length) return;
+        var on = !boxes[0].checked;
+        if(on && !confirm('상세 이미지 ' + boxes.length + '장을 모두 삭제 표시할까요? (저장해야 실제로 지워집니다)')) return;
+        boxes.forEach(function(b){ b.checked = on; b.closest('.up-thumb').style.opacity = on ? 0.3 : 1; });
+    }
+    window.markAllDetail = markAllDetail;
+
+    // 옵션 행 추가
+    var optIndex = document.querySelectorAll('#optBody tr').length;
+    window.addOptionRow = function(){
+        var i = optIndex++;
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+            '<td><input type="hidden" name="options['+i+'][id]" value="">' +
+            '<input class="input" style="height:36px" name="options['+i+'][group_name]" placeholder="예) 사이즈"></td>' +
+            '<td><input class="input" style="height:36px" name="options['+i+'][name]" placeholder="예) 260mm"></td>' +
+            '<td><input class="input" style="height:36px;text-align:right" type="number" name="options['+i+'][extra_price]" value="0"></td>' +
+            '<td><input class="input" style="height:36px;text-align:right" type="number" min="0" name="options['+i+'][stock]" value="0"></td>' +
+            '<td style="text-align:center"><input type="checkbox" name="options['+i+'][is_active]" value="1" checked></td>' +
+            '<td><button type="button" class="btn btn-sm btn-danger">삭제</button></td>';
+        tr.querySelector('button').addEventListener('click', function(){ tr.remove(); });
+        document.getElementById('optBody').appendChild(tr);
+        tr.querySelector('input[name$="[group_name]"]').focus();
+    };
 </script>
 
 {{-- 상세 설명 리치 에디터 (Quill) --}}

@@ -12,12 +12,14 @@ class Product extends Model
     protected $fillable = [
         'external_no', 'seller_id', 'category_id', 'name', 'slug', 'sku', 'brand',
         'price', 'cost_price', 'sale_price', 'stock', 'safety_stock', 'track_stock',
-        'is_soldout', 'is_active', 'sort', 'main_image', 'description',
+        'is_soldout', 'is_active', 'is_best', 'best_sort', 'sort', 'main_image', 'description',
     ];
 
     protected $casts = [
         'is_soldout' => 'boolean',
         'is_active' => 'boolean',
+        'is_best' => 'boolean',
+        'best_sort' => 'integer',
         'track_stock' => 'boolean',
         'price' => 'integer',
         'cost_price' => 'integer',
@@ -75,6 +77,16 @@ class Product extends Model
     public function detailImages(): HasMany
     {
         return $this->hasMany(ProductImage::class)->where('type', 'detail')->orderBy('sort');
+    }
+
+    public function options(): HasMany
+    {
+        return $this->hasMany(ProductOption::class)->orderBy('sort')->orderBy('id');
+    }
+
+    public function activeOptions(): HasMany
+    {
+        return $this->options()->where('is_active', true);
     }
 
     /** Effective selling price (sale price when it is lower than list price). */

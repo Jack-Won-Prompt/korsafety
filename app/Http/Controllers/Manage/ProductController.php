@@ -32,7 +32,7 @@ class ProductController extends Controller
 
     /** 판매 상태 필터 */
     public const STATES = [
-        'onsale' => '판매중', 'soldout' => '품절', 'hidden' => '미노출', 'noimage' => '이미지 없음',
+        'onsale' => '판매중', 'soldout' => '품절', 'hidden' => '미노출', 'noimage' => '이미지 없음', 'best' => '베스트 셀러',
     ];
 
     public function index(Request $request)
@@ -58,6 +58,7 @@ class ProductController extends Controller
             'soldout' => $query->where('is_soldout', true),
             'hidden' => $query->where('is_active', false),
             'noimage' => $query->where(fn ($w) => $w->whereNull('main_image')->orWhere('main_image', '')),
+            'best' => $query->where('is_best', true),
             default => null,
         };
         match ($stock) {
@@ -105,7 +106,7 @@ class ProductController extends Controller
     public function bulk(Request $request)
     {
         $data = $request->validate([
-            'bulk_action' => 'required|in:onsale,soldout,activate,deactivate,track_on,track_off,category,delete',
+            'bulk_action' => 'required|in:onsale,soldout,activate,deactivate,track_on,track_off,best_on,best_off,category,delete',
             'ids' => 'required|array|min:1',
             'ids.*' => 'integer',
             'bulk_category_id' => 'nullable|exists:categories,id',
@@ -127,13 +128,16 @@ class ProductController extends Controller
             case 'deactivate': $rows->update(['is_active' => false]); $msg = '미노출 처리'; break;
             case 'track_on':  $rows->update(['track_stock' => true]);  $msg = '재고 관리 켜기'; break;
             case 'track_off': $rows->update(['track_stock' => false]); $msg = '재고 관리 끄기'; break;
+            case 'best_on':   $rows->update(['is_best' => true]);  $msg = '베스트 셀러 지정'; break;
+            case 'best_off':  $rows->update(['is_best' => false]); $msg = '베스트 셀러 해제'; break;
             case 'category':
                 if (empty($data['bulk_category_id'])) {
                     return back()->with('error', '이동할 카테고리를 선택하세요.');
                 }
                 $rows->update(['category_id' => $data['bulk_category_id']]);
-                foreach ($ids as $id) {   // 다대다 pivot도 함께 연결
-                    Product::find($id)?->categories()->syncWithoutDetaching([$data['bulk_category_id']]);
+                // 예전 카테고리 연결이 남으면 쇼핑몰에서 이동이 되지 않으므로 sync로 교체
+                foreach ($ids as $id) {
+                    Product::find($id)?->categories()->sync([$data['bulk_category_id']]);
                 }
                 $msg = '카테고리 이동';
                 break;
@@ -194,6 +198,7 @@ class ProductController extends Controller
         $product->save();
         $this->syncCategory($product, $data['category_id'] ?? null);
         $this->handleGallery($product, $request);
+        $this->syncOptions($product, $request);
 
         return redirect()->route('manage.products.index')->with('status', '상품이 등록되었습니다.');
     }
@@ -201,8 +206,8 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         $this->authorizeOwner($product);
-        $product->load('galleryImages');
-        $categories = Category::orderBy('sort')->get();
+        $product->load('galleryImages', 'detailImages', 'options');
+        $categories = Category::orderBy('sort')->orderBy('name')->get();
         return view('manage.products.form', compact('product', 'categories'));
     }
 
@@ -214,13 +219,15 @@ class ProductController extends Controller
         $product->save();
         $this->syncCategory($product, $data['category_id'] ?? null);
 
-        // 선택 갤러리 삭제
-        foreach ((array) $request->input('remove_images', []) as $imgId) {
-            ProductImage::where('product_id', $product->id)->where('id', $imgId)->delete();
+        // 선택한 이미지 삭제 (갤러리 · 상세 공통)
+        $removeIds = array_filter((array) $request->input('remove_images', []));
+        if ($removeIds) {
+            ProductImage::where('product_id', $product->id)->whereIn('id', $removeIds)->delete();
         }
         $this->handleGallery($product, $request);
+        $this->syncOptions($product, $request);
 
-        return redirect()->route('manage.products.index')->with('status', '상품이 수정되었습니다.');
+        return redirect()->route('manage.products.edit', $product)->with('status', '상품이 수정되었습니다.');
     }
 
     public function destroy(Product $product)
@@ -432,6 +439,12 @@ class ProductController extends Controller
             'is_active' => 'nullable|boolean',
             'main_image' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:8192',
             'gallery.*' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:8192',
+            'detail_images.*' => 'nullable|image|mimes:jpg,jpeg,png,webp,gif|max:8192',
+            'options' => 'nullable|array|max:100',
+            'options.*.name' => 'nullable|string|max:120',
+            'options.*.group_name' => 'nullable|string|max:60',
+            'options.*.extra_price' => 'nullable|integer|min:-10000000|max:10000000',
+            'options.*.stock' => 'nullable|integer|min:0|max:999999',
         ], [], [
             'name' => '상품명', 'price' => '판매가', 'cost_price' => '매입가', 'sale_price' => '할인가',
             'stock' => '재고', 'safety_stock' => '안전재고', 'sort' => '진열 순서', 'main_image' => '대표 이미지',
@@ -462,28 +475,74 @@ class ProductController extends Controller
         }
     }
 
+    /**
+     * 대표 카테고리를 다대다 연결과 일치시킨다.
+     * syncWithoutDetaching을 쓰면 예전 카테고리 연결이 남아 쇼핑몰에서 카테고리 이동이 되지 않는다.
+     */
     private function syncCategory(Product $product, $categoryId): void
     {
-        if ($categoryId) {
-            $product->categories()->syncWithoutDetaching([$categoryId]);
+        $product->categories()->sync($categoryId ? [$categoryId] : []);
+    }
+
+    /** 옵션 행 저장 — 화면에서 지운 행은 삭제 */
+    private function syncOptions(Product $product, Request $request): void
+    {
+        $rows = (array) $request->input('options', []);
+        $keepIds = [];
+        $sort = 0;
+
+        foreach ($rows as $row) {
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($name === '') {
+                continue;   // 옵션명이 비면 빈 행으로 보고 건너뜀
+            }
+            $attrs = [
+                'group_name' => trim((string) ($row['group_name'] ?? '')) ?: null,
+                'name' => mb_substr($name, 0, 120),
+                'extra_price' => (int) ($row['extra_price'] ?? 0),
+                'stock' => max(0, (int) ($row['stock'] ?? 0)),
+                'is_active' => ! empty($row['is_active']),
+                'sort' => $sort++,
+            ];
+
+            $id = (int) ($row['id'] ?? 0);
+            $option = $id ? $product->options()->find($id) : null;
+            if ($option) {
+                $option->update($attrs);
+            } else {
+                $option = $product->options()->create($attrs);
+            }
+            $keepIds[] = $option->id;
         }
+
+        $product->options()->whereNotIn('id', $keepIds ?: [0])->delete();
     }
 
     private function handleGallery(Product $product, Request $request): void
     {
-        if (! $request->hasFile('gallery')) return;
-        $sort = (int) $product->galleryImages()->max('sort');
-        foreach ($request->file('gallery') as $file) {
+        $this->storeImages($product, $request, 'gallery', 'gallery');
+        $this->storeImages($product, $request, 'detail_images', 'detail');
+
+        if (! $product->main_image && $product->galleryImages()->exists()) {
+            $product->update(['main_image' => $product->galleryImages()->first()->path]);
+        }
+    }
+
+    /** 업로드된 이미지들을 지정한 타입(gallery|detail)으로 저장 */
+    private function storeImages(Product $product, Request $request, string $field, string $type): void
+    {
+        if (! $request->hasFile($field)) {
+            return;
+        }
+        $sort = (int) $product->images()->where('type', $type)->max('sort');
+        foreach ($request->file($field) as $file) {
             if (! $file) continue;
             ProductImage::create([
                 'product_id' => $product->id,
                 'path' => $this->saveUpload($file),
-                'type' => 'gallery',
+                'type' => $type,
                 'sort' => ++$sort,
             ]);
-        }
-        if (! $product->main_image && $product->galleryImages()->exists()) {
-            $product->update(['main_image' => $product->galleryImages()->first()->path]);
         }
     }
 
