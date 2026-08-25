@@ -191,6 +191,37 @@
             <button type="button" class="btn btn-sm btn-accent" onclick="addOptionRow()">+ 옵션 추가</button>
         </div>
         <div class="panel-b">
+            {{-- 여러 선택지를 한 번에 옵션 행으로 추가 --}}
+            <div class="opt-quick">
+                <div class="oq-f" style="flex:0 0 150px">
+                    <label>옵션 구분</label>
+                    <input class="input" id="oqGroup" style="height:36px" placeholder="예) 색상" list="oqGroupList">
+                    <datalist id="oqGroupList">
+                        <option value="색상"></option><option value="사이즈"></option><option value="타입"></option>
+                    </datalist>
+                </div>
+                <div class="oq-f" style="flex:1 1 240px">
+                    <label>선택지 — 쉼표로 구분</label>
+                    <input class="input" id="oqNames" style="height:36px" placeholder="예) 그린, 옐로우, 핑크">
+                </div>
+                <div class="oq-f" style="flex:0 0 120px">
+                    <label>추가 금액</label>
+                    <input class="input" id="oqPrice" type="number" value="0" style="height:36px;text-align:right">
+                </div>
+                <div class="oq-f" style="flex:0 0 100px">
+                    <label>재고</label>
+                    <input class="input" id="oqStock" type="number" min="0" value="0" style="height:36px;text-align:right">
+                </div>
+                <button type="button" class="btn btn-sm btn-accent" style="flex:0 0 auto;align-self:flex-end" onclick="quickAddOptions()">한번에 추가</button>
+            </div>
+            <div class="hint" style="margin:-6px 0 16px">
+                자주 쓰는 묶음 —
+                <button type="button" class="oq-chip" onclick="fillPreset('색상','그린, 옐로우, 핑크')">그린·옐로우·핑크</button>
+                <button type="button" class="oq-chip" onclick="fillPreset('색상','블랙, 화이트, 그레이, 네이비')">블랙·화이트·그레이·네이비</button>
+                <button type="button" class="oq-chip" onclick="fillPreset('색상','레드, 오렌지, 블루, 그린')">레드·오렌지·블루·그린</button>
+                <button type="button" class="oq-chip" onclick="fillPreset('사이즈','250mm, 260mm, 270mm, 280mm')">신발 사이즈</button>
+                <button type="button" class="oq-chip" onclick="fillPreset('사이즈','S, M, L, XL, 2XL')">의류 사이즈</button>
+            </div>
             <table class="table" id="optTable">
                 <thead><tr>
                     <th style="width:170px">옵션 구분</th>
@@ -302,6 +333,52 @@
         t.textContent = msg;
         document.body.appendChild(t);
         setTimeout(function(){ t.remove(); }, 2600);
+    };
+
+    // 자주 쓰는 묶음 채우기
+    window.fillPreset = function(group, names){
+        document.getElementById('oqGroup').value = group;
+        document.getElementById('oqNames').value = names;
+        document.getElementById('oqNames').focus();
+    };
+
+    // 쉼표로 구분한 선택지를 한 번에 옵션 행으로 추가
+    window.quickAddOptions = function(){
+        var group = document.getElementById('oqGroup').value.trim();
+        var price = parseInt(document.getElementById('oqPrice').value, 10) || 0;
+        var stock = parseInt(document.getElementById('oqStock').value, 10) || 0;
+        var names = document.getElementById('oqNames').value
+            .split(/[,\n·\/]/).map(function(s){ return s.trim(); })
+            .filter(function(s){ return s.length; });
+
+        if(!names.length){ alert('추가할 선택지를 입력하세요. 예) 그린, 옐로우, 핑크'); document.getElementById('oqNames').focus(); return; }
+
+        // 이미 있는 (구분 + 선택지) 조합은 건너뛴다
+        var exist = {};
+        document.querySelectorAll('#optBody tr').forEach(function(tr){
+            var g = tr.querySelector('input[name$="[group_name]"]');
+            var n = tr.querySelector('input[name$="[name]"]');
+            if(n) exist[((g && g.value) || '').trim() + '|' + n.value.trim()] = true;
+        });
+
+        var added = 0, skipped = [];
+        names.forEach(function(name){
+            if(exist[group + '|' + name]){ skipped.push(name); return; }
+            addOptionRow();
+            var tr = document.querySelector('#optBody tr:last-child');
+            tr.querySelector('input[name$="[group_name]"]').value = group;
+            tr.querySelector('input[name$="[name]"]').value = name;
+            tr.querySelector('input[name$="[extra_price]"]').value = price;
+            tr.querySelector('input[name$="[stock]"]').value = stock;
+            exist[group + '|' + name] = true;
+            added++;
+        });
+
+        document.getElementById('oqNames').value = '';
+        document.getElementById('oqNames').focus();
+        if(skipped.length){
+            alert(added + '개를 추가했습니다.\n이미 있는 선택지는 건너뛰었습니다: ' + skipped.join(', '));
+        }
     };
 
     // 옵션 행 추가
