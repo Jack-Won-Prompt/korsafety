@@ -33,11 +33,13 @@
             <a href="{{ route('password.request') }}" style="color:#8b93a1;font-size:13px">비밀번호를 잊으셨나요?</a>
         </div>
 
+        @if($signupOn ?? true)
         <div class="auth-links" style="flex-wrap:wrap;gap:8px;margin-top:14px">
             <a href="{{ route('partner.apply') }}">입점 신청</a>
             <a href="{{ route('agent.apply') }}">협력사 신청</a>
             <a href="{{ route('purchaser.apply') }}">구매 대행자 신청 →</a>
         </div>
+        @endif
     </form>
 </div>
 </body>

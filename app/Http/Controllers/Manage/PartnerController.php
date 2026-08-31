@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Agent;
 use App\Models\Purchaser;
 use App\Models\Seller;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -13,13 +14,31 @@ use Illuminate\Support\Str;
 
 class PartnerController extends Controller
 {
+    /**
+     * 신청(가입) 접수 여부 — 사이트 설정의 '회원가입 사용'을 끄면
+     * 입점·협력사·구매 대행자 신청도 함께 막는다.
+     */
+    private function applyClosed()
+    {
+        if (Setting::bool('signup_enabled')) {
+            return null;
+        }
+
+        return redirect()->route('manage.login')
+            ->withErrors(['email' => '현재 신규 신청을 받고 있지 않습니다. 문의는 고객센터로 연락해 주세요.']);
+    }
+
     public function showApply()
     {
+        if ($stop = $this->applyClosed()) return $stop;
+
         return view('partner.apply');
     }
 
     public function apply(Request $request)
     {
+        if ($stop = $this->applyClosed()) return $stop;
+
         $data = $request->validate([
             'store_name' => 'required|string|max:100',
             'owner_name' => 'required|string|max:50',
@@ -62,11 +81,15 @@ class PartnerController extends Controller
     // ---- 협력사(Agent) 신청 ----
     public function showAgentApply()
     {
+        if ($stop = $this->applyClosed()) return $stop;
+
         return view('partner.agent-apply');
     }
 
     public function agentApply(Request $request)
     {
+        if ($stop = $this->applyClosed()) return $stop;
+
         $data = $request->validate([
             'company_name' => 'required|string|max:100',
             'owner_name' => 'required|string|max:50',
@@ -102,11 +125,15 @@ class PartnerController extends Controller
     // ---- 구매 대행자(Purchasing Agent) 신청 ----
     public function showPurchaserApply()
     {
+        if ($stop = $this->applyClosed()) return $stop;
+
         return view('partner.purchaser-apply');
     }
 
     public function purchaserApply(Request $request)
     {
+        if ($stop = $this->applyClosed()) return $stop;
+
         $data = $request->validate([
             'company_name' => 'required|string|max:100',
             'owner_name' => 'required|string|max:50',
