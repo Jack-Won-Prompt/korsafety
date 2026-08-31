@@ -175,7 +175,7 @@
             <form action="{{ route('logout') }}" method="post">@csrf<button type="submit" style="width:100%;text-align:left;background:none;border:0;padding:13px 8px;font-weight:600;font-size:15px;color:var(--accent)">로그아웃</button></form>
         @else
             <a href="{{ route('login') }}">로그인</a>
-            <a href="{{ route('register') }}">회원가입</a>
+            @if($signupOn ?? true)<a href="{{ route('register') }}">회원가입</a>@endif
         @endauth
     </div>
 </div>

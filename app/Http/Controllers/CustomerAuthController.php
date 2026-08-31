@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,14 +39,27 @@ class CustomerAuthController extends Controller
         return redirect()->intended(route('home'));
     }
 
+    /** 회원가입 사용 여부 — 사이트 설정에서 끄면 가입 자체를 막는다 */
+    private function signupClosed()
+    {
+        if (Setting::bool('signup_enabled')) {
+            return null;
+        }
+
+        return redirect()->route('login')->withErrors(['email' => '현재 회원가입을 받고 있지 않습니다. 문의는 고객센터로 연락해 주세요.']);
+    }
+
     public function showRegister()
     {
+        if ($stop = $this->signupClosed()) return $stop;
         if (Auth::check()) return redirect()->route('home');
         return view('auth.register');
     }
 
     public function register(Request $request)
     {
+        if ($stop = $this->signupClosed()) return $stop;
+
         $data = $request->validate([
             'name' => 'required|string|max:50',
             'email' => 'required|email|max:150|unique:users,email',

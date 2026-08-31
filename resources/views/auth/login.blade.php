@@ -29,7 +29,7 @@
             <button type="submit" class="btn btn-primary btn-lg btn-block">로그인</button>
         </form>
 
-        <div class="alt">아직 회원이 아니신가요? <a href="{{ route('register') }}">회원가입</a></div>
+        @if($signupOn ?? true)<div class="alt">아직 회원이 아니신가요? <a href="{{ route('register') }}">회원가입</a></div>@endif
     </div>
 </div>
 @endsection

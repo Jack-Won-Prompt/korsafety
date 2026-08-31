@@ -13,6 +13,7 @@ class ConfigController extends Controller
         return response()->json([
             // 'ask' = 가격 문의(가격 숨김) / 'price' = 판매가 노출
             'price_display_mode' => Setting::get('price_display_mode') === 'price' ? 'price' : 'ask',
+            'signup_enabled' => Setting::bool('signup_enabled'),
             'contact_banner' => [
                 'enabled' => Setting::bool('contact_banner_enabled'),
                 'text' => (string) Setting::get('contact_banner_text'),

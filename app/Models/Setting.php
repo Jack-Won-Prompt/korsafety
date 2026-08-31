@@ -24,6 +24,8 @@ class Setting extends Model
         'contact_banner_enabled' => '1',
         'contact_banner_text'    => '안전제품 관련 제작 및 제품문의',
         'contact_banner_phone'   => '02-2273-9533',
+        // 쇼핑몰 회원가입 영역 노출 (끄면 가입 링크가 사라지고 가입 페이지도 막힘)
+        'signup_enabled'         => '1',
         // SR 접수 알림 수신 주소 (쉼표로 여러 명 지정 가능)
         'sr_notify_email'        => 'jack@withworks.co.kr',
     ];

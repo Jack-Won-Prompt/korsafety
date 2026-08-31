@@ -41,6 +41,25 @@
     </div>
 
     <div class="panel">
+        <div class="panel-h"><div><h2>회원가입</h2><div class="sub">쇼핑몰 고객 회원가입 영역 노출 여부</div></div></div>
+        <div class="panel-b">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+                <div>
+                    <div style="font-weight:700;font-size:15px">회원가입 사용</div>
+                    <div class="hint" style="margin-top:6px">
+                        끄면 헤더·모바일 메뉴·로그인 화면의 <b>회원가입</b> 링크가 사라지고, 주소로 직접 들어와도 가입 페이지가 막힙니다.<br>
+                        이미 가입한 회원의 로그인은 그대로 됩니다. 입점·협력사·구매 대행자 신청은 이 설정과 무관합니다.
+                    </div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" name="signup_enabled" value="1" {{ $settings['signup_enabled'] ? 'checked' : '' }}>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
         <div class="panel-h"><div><h2>연락처 배너 (모바일 앱 · 웹)</h2><div class="sub">앱 홈·상품 상세와 쇼핑몰 홈·상품 상세에 함께 적용됩니다</div></div></div>
         <div class="panel-b">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:24px">
