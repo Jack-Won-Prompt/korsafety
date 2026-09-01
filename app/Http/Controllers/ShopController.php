@@ -67,7 +67,7 @@ class ShopController extends Controller
 
         $newIn = Product::query()->visible()
             ->whereNotNull('main_image')
-            ->orderByDesc('external_no')
+            ->orderByDesc('id')
             ->limit(10)->get();
 
         // A curated block per top category
@@ -99,9 +99,9 @@ class ShopController extends Controller
         match ($sort) {
             'price_asc'  => $query->orderByRaw('COALESCE(sale_price, price) asc'),
             'price_desc' => $query->orderByRaw('COALESCE(sale_price, price) desc'),
-            'newest'     => $query->orderByDesc('external_no'),
+            'newest'     => $query->orderByDesc('id'),
             'name'       => $query->orderBy('name'),
-            default      => $query->orderByRaw('is_soldout asc')->orderByDesc('external_no'),
+            default      => $query->orderByRaw('is_soldout asc')->orderByDesc('id'),
         };
 
         $products = $query->paginate(24)->withQueryString();
@@ -143,7 +143,7 @@ class ShopController extends Controller
             $products = Product::query()->visible()
                 ->whereNotNull('main_image')
                 ->where(fn ($w) => $w->where('name', 'like', "%$q%")->orWhere('brand', 'like', "%$q%"))
-                ->orderByDesc('external_no')
+                ->orderByDesc('id')
                 ->paginate(24)->withQueryString();
 
             // 첫 페이지에서만 기록 (페이지 넘김은 같은 검색으로 본다)

@@ -19,7 +19,7 @@ class ProductController extends Controller
             ->inRandomOrder()->limit(10)->get();
 
         $newIn = Product::whereNotNull('main_image')
-            ->orderByDesc('external_no')->limit(12)->get();
+            ->orderByDesc('id')->limit(12)->get();
 
         $categories = Category::orderBy('sort')->withCount('products')->get();
 
@@ -67,9 +67,9 @@ class ProductController extends Controller
         match ($request->query('sort', 'recommended')) {
             'price_asc' => $query->orderByRaw('COALESCE(sale_price, price) asc'),
             'price_desc' => $query->orderByRaw('COALESCE(sale_price, price) desc'),
-            'newest' => $query->orderByDesc('external_no'),
+            'newest' => $query->orderByDesc('id'),
             'name' => $query->orderBy('name'),
-            default => $query->orderByRaw('is_soldout asc')->orderByDesc('external_no'),
+            default => $query->orderByRaw('is_soldout asc')->orderByDesc('id'),
         };
 
         $products = $query->paginate(min((int) $request->query('per_page', 20), 50));

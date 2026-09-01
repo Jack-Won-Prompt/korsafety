@@ -17,7 +17,7 @@
             <div class="cnt">총 <b>{{ number_format($products->total()) }}</b>개의 상품</div>
         </div>
         <div class="sortbar">
-            @php $sorts = ['recommended'=>'추천순','newest'=>'신상품순','price_asc'=>'낮은가격순','price_desc'=>'높은가격순','name'=>'이름순']; @endphp
+            @php $sorts = ['recommended'=>'추천순','newest'=>'최신 등록순','price_asc'=>'낮은가격순','price_desc'=>'높은가격순','name'=>'이름순']; @endphp
             @foreach($sorts as $key => $label)
                 <a href="{{ route('category.show', [$category, 'sort' => $key]) }}" class="{{ $sort === $key ? 'active' : '' }}">{{ $label }}</a>
             @endforeach
