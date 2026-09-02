@@ -8,14 +8,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
-/** 상품 카테고리 관리 — 대분류 > 소분류 2단계, 노출 토글, 진열 순서 (본사 전용) */
+/** 상품 카테고리 관리 — 대 > 중 > 소 3단계, 노출 토글, 진열 순서 (본사 전용) */
 class CategoryController extends Controller
 {
     public function index(Request $request)
     {
-        $roots = Category::roots()->with('children')->orderBy('sort')->orderBy('name')->get();
+        // 대 > 중 > 소 순서로 편 트리 (각 항목에 tree_depth·tree_path 포함)
+        $tree = Category::flatTree();
 
-        // 카테고리별 상품 수 (다대다 pivot 기준) — 트리 표시에 함께 씀
+        // 카테고리별 상품 수 (다대다 pivot 기준)
         $counts = Category::withCount('products')->pluck('products_count', 'id');
 
         $editing = null;
@@ -23,17 +24,25 @@ class CategoryController extends Controller
             $editing = Category::find($id);
         }
 
+        // 상위로 지정할 수 있는 후보 — 소분류(깊이 2)는 더 아래를 둘 수 없어 제외,
+        // 수정 중이라면 자기 자신과 그 하위도 제외(순환 방지)
+        $exclude = $editing ? $editing->descendantIds() : [];
+        $parents = $tree->filter(fn ($c) => $c->tree_depth < Category::MAX_DEPTH - 1 && ! in_array($c->id, $exclude, true));
+
         return view('manage.categories.index', [
-            'roots' => $roots,
+            'tree' => $tree,
             'counts' => $counts,
             'editing' => $editing,
-            'parents' => Category::roots()->orderBy('sort')->orderBy('name')->get(),
+            'parents' => $parents,
         ]);
     }
 
     public function store(Request $request)
     {
         $data = $this->validated($request);
+        if (($data['parent_id'] ?? null) && Category::find($data['parent_id'])->depth + 1 > Category::MAX_DEPTH - 1) {
+            return back()->withErrors(['parent_id' => '대·중·소 3단계까지만 만들 수 있습니다.'])->withInput();
+        }
         Category::create($data);
 
         return redirect()->route('manage.categories.index')->with('status', '카테고리가 추가되었습니다.');
@@ -42,18 +51,36 @@ class CategoryController extends Controller
     public function update(Request $request, Category $category)
     {
         $data = $this->validated($request, $category);
+        $parentId = $data['parent_id'] ?? null;
 
-        // 자기 자신 / 자기 하위를 부모로 지정하는 순환 방지
-        if (($data['parent_id'] ?? null) == $category->id) {
-            return back()->withErrors(['parent_id' => '자기 자신을 상위 카테고리로 지정할 수 없습니다.'])->withInput();
+        // 자기 자신이나 자기 하위를 상위로 지정하면 트리가 끊어진다
+        if ($parentId && in_array((int) $parentId, $category->descendantIds(), true)) {
+            return back()->withErrors(['parent_id' => '자기 자신이나 하위 카테고리를 상위로 지정할 수 없습니다.'])->withInput();
         }
-        if (($data['parent_id'] ?? null) && $category->children()->exists()) {
-            return back()->withErrors(['parent_id' => '하위 카테고리가 있는 분류는 다른 분류의 하위로 옮길 수 없습니다.'])->withInput();
+
+        // 옮긴 뒤 깊이 + 하위 높이가 대·중·소 3단계를 넘지 않아야 한다
+        $newDepth = $parentId ? (Category::find($parentId)->depth + 1) : 0;
+        if ($newDepth + $this->subtreeHeight($category) > Category::MAX_DEPTH - 1) {
+            return back()->withErrors(['parent_id' => '대·중·소 3단계까지만 만들 수 있습니다. 하위 분류가 있는 항목은 더 아래로 옮길 수 없습니다.'])->withInput();
         }
 
         $category->update($data);
 
         return redirect()->route('manage.categories.index')->with('status', '카테고리가 수정되었습니다.');
+    }
+
+    /** 이 분류 아래로 몇 단계가 더 있는지 (0=하위 없음) */
+    private function subtreeHeight(Category $category): int
+    {
+        $height = 0;
+        $level = [$category->id];
+        for ($i = 1; $i < Category::MAX_DEPTH; $i++) {
+            $level = Category::whereIn('parent_id', $level)->pluck('id')->all();
+            if (! $level) break;
+            $height++;
+        }
+
+        return $height;
     }
 
     public function destroy(Category $category)

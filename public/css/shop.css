@@ -793,3 +793,7 @@ h1,h2,h3,h4 { margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height:
 .pd-opt-total b { font-size: 19px; font-weight: 900; color: var(--accent); margin-left: 8px; }
 .cart-line .cl-opt { font-size: 12.5px; color: var(--muted); margin: 4px 0 6px; }
 .cart-line .cl-unit { font-size: 12px; color: var(--muted); margin-top: 2px; }
+/* 3단계 카테고리 — 드롭다운 소분류, 모바일 서랍 3단 들여쓰기 */
+.catnav-item .subnav a.lv3 { padding-left: 26px; font-size: 13px; color: var(--muted); }
+.catnav-item .subnav a.lv3:hover { color: var(--ink); }
+.drawer .panel a.sub2 { padding-left: 36px; font-size: 13.5px; color: var(--muted); }

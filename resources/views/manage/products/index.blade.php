@@ -62,7 +62,7 @@
             <select class="input" style="height:38px;flex:0 0 140px" name="category_id">
                 <option value="">전체 카테고리</option>
                 @foreach($categories as $c)
-                    <option value="{{ $c->id }}" @selected((string) $categoryId === (string) $c->id)>{{ $c->name }}</option>
+                    <option value="{{ $c->id }}" @selected((string) $categoryId === (string) $c->id)>{{ str_repeat("　", $c->tree_depth) }}{{ $c->tree_depth ? "└ " : "" }}{{ $c->name }}</option>
                 @endforeach
             </select>
             <select class="input" style="height:38px;flex:0 0 112px" name="state">
@@ -108,10 +108,10 @@
                     <option value="category">카테고리 이동</option>
                     <option value="delete">삭제</option>
                 </select>
-                <select class="input" name="bulk_category_id" id="bulkCategory" style="height:34px;width:130px;font-size:12.5px" hidden>
-                    <option value="">이동할 카테고리</option>
+                <select class="input" name="bulk_category_id" id="bulkCategory" style="height:34px;width:210px;font-size:12.5px" hidden>
+                    <option value="">이동할 카테고리 (대 > 중 > 소)</option>
                     @foreach($categories as $c)
-                        <option value="{{ $c->id }}">{{ $c->name }}</option>
+                        <option value="{{ $c->id }}">{{ $c->tree_path }}</option>
                     @endforeach
                 </select>
                 <button type="button" class="btn btn-sm" onclick="runBulk()">적용</button>

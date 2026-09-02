@@ -17,7 +17,7 @@
     <div class="wrap">
         <div class="tb-left"><span class="dot"></span> <b style="letter-spacing:.06em;color:#fff">Safe Work, Safe Life</b> — 현장의 안전과 위생을 한국안전이 함께합니다</div>
         <div class="tb-right">
-            <a href="{{ route('home') }}">고객센터 1588-0000</a>
+            <a href="tel:{{ preg_replace('/[^0-9+]/', '', config('company.tel')) }}">고객센터 {{ config('company.tel') }}</a>
             <a href="#">비회원 주문조회</a>
             <a href="#">고객센터</a>
         </div>
@@ -97,6 +97,9 @@
                                 @foreach($kids as $kid)
                                     <a href="{{ route('category.show', $kid) }}"
                                        class="{{ (isset($category) && $category->id === $kid->id) ? 'on' : '' }}">{{ $kid->name }}</a>
+                                    @foreach($kid->children ?? [] as $leaf)
+                                        <a href="{{ route('category.show', $leaf) }}" class="lv3 {{ (isset($category) && $category->id === $leaf->id) ? 'on' : '' }}">└ {{ $leaf->name }}</a>
+                                    @endforeach
                                 @endforeach
                             </div>
                         @endif
@@ -150,7 +153,7 @@
         <div class="footer-bottom">
             <div class="biz">
                 주식회사 한국안전 · 대표 임현규 · 사업자등록번호 101-86-83744<br>
-                서울특별시 종로구 돈화문로 94, 1층(와룡동, 동원빌딩) · 법인등록번호 110111-5230026 · 고객센터 1588-0000
+                서울특별시 종로구 돈화문로 94, 1층(와룡동, 동원빌딩) · 법인등록번호 110111-5230026 · 고객센터 {{ config('company.tel') }}
             </div>
             <div>© {{ date('Y') }} KOR SAFETY. All rights reserved.</div>
         </div>
@@ -168,6 +171,9 @@
                 <a href="{{ route('category.show', $cat) }}">{{ $cat->name }}</a>
                 @foreach($cat->children ?? [] as $kid)
                     <a href="{{ route('category.show', $kid) }}" class="sub">└ {{ $kid->name }}</a>
+                    @foreach($kid->children ?? [] as $leaf)
+                        <a href="{{ route('category.show', $leaf) }}" class="sub sub2">└ {{ $leaf->name }}</a>
+                    @endforeach
                 @endforeach
             @endif
         @endforeach

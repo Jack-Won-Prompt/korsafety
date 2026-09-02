@@ -51,7 +51,9 @@ class ProductController extends Controller
                 ->orWhere('sku', 'like', "%$q%"));
         }
         if ($categoryId) {
-            $query->where('category_id', $categoryId);
+            // 다중 카테고리를 쓰므로 연결 기준으로 찾고, 상위를 고르면 하위 분류까지 포함한다
+            $catIds = optional(Category::find($categoryId))->descendantIds() ?: [(int) $categoryId];
+            $query->whereHas('categories', fn ($w) => $w->whereIn('categories.id', $catIds));
         }
         match ($state) {
             'onsale' => $query->where('is_active', true)->where('is_soldout', false),
@@ -92,7 +94,7 @@ class ProductController extends Controller
 
         return view('manage.products.index', [
             'products' => $products,
-            'categories' => Category::orderBy('sort')->orderBy('name')->get(),
+            'categories' => Category::flatTree(),
             'stats' => $stats,
             'q' => $q,
             'categoryId' => $categoryId,
@@ -181,7 +183,7 @@ class ProductController extends Controller
 
     public function create()
     {
-        $categories = Category::orderBy('sort')->orderBy('name')->get();
+        $categories = Category::flatTree();
         $product = new Product([
             'is_soldout' => false, 'is_active' => true, 'track_stock' => true,
             'stock' => 0, 'safety_stock' => 0, 'sort' => 0,
@@ -196,7 +198,7 @@ class ProductController extends Controller
         $product->seller_id = $this->sellerId();
         $this->fill($product, $data, $request);
         $product->save();
-        $this->syncCategory($product, $data['category_id'] ?? null);
+        $this->syncCategories($product, $data);
         $this->handleGallery($product, $request);
         $this->syncOptions($product, $request);
 
@@ -206,8 +208,8 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         $this->authorizeOwner($product);
-        $product->load('galleryImages', 'detailImages', 'options');
-        $categories = Category::orderBy('sort')->orderBy('name')->get();
+        $product->load('galleryImages', 'detailImages', 'options', 'categories');
+        $categories = Category::flatTree();
         return view('manage.products.form', compact('product', 'categories'));
     }
 
@@ -217,7 +219,7 @@ class ProductController extends Controller
         $data = $this->validated($request);
         $this->fill($product, $data, $request);
         $product->save();
-        $this->syncCategory($product, $data['category_id'] ?? null);
+        $this->syncCategories($product, $data);
 
         // 선택한 이미지 삭제 (갤러리 · 상세 공통)
         $removeIds = array_filter((array) $request->input('remove_images', []));
@@ -439,6 +441,8 @@ class ProductController extends Controller
             'sku' => 'nullable|string|max:64',
             'brand' => 'nullable|string|max:120',
             'category_id' => 'nullable|exists:categories,id',
+            'category_ids' => 'nullable|array|max:20',
+            'category_ids.*' => 'integer|exists:categories,id',
             'price' => 'nullable|integer|min:0',
             'cost_price' => 'nullable|integer|min:0',
             'sale_price' => 'nullable|integer|min:0',
@@ -468,7 +472,7 @@ class ProductController extends Controller
         $product->name = $data['name'];
         $product->sku = $data['sku'] ?? null;
         $product->brand = $data['brand'] ?? null;
-        $product->category_id = $data['category_id'] ?? null;
+        // 카테고리는 syncCategories()에서 다중 연결과 함께 대표 분류를 정한다
         $product->price = $data['price'] ?? null;
         $product->cost_price = $data['cost_price'] ?? null;
         $product->sale_price = $data['sale_price'] ?? null;
@@ -491,9 +495,30 @@ class ProductController extends Controller
      * 대표 카테고리를 다대다 연결과 일치시킨다.
      * syncWithoutDetaching을 쓰면 예전 카테고리 연결이 남아 쇼핑몰에서 카테고리 이동이 되지 않는다.
      */
-    private function syncCategory(Product $product, $categoryId): void
+    /**
+     * 상품 카테고리 저장 — 여러 개를 연결하고 첫 번째를 대표 분류로 삼는다.
+     * syncWithoutDetaching을 쓰면 예전 카테고리 연결이 남아 이동이 되지 않으므로 sync로 교체한다.
+     */
+    private function syncCategories(Product $product, array $data): void
     {
-        $product->categories()->sync($categoryId ? [$categoryId] : []);
+        $ids = array_values(array_unique(array_filter(array_map('intval', (array) ($data['category_ids'] ?? [])))));
+
+        // 다중 선택이 없으면 예전처럼 단일 category_id를 쓴다
+        if (! $ids && ! empty($data['category_id'])) {
+            $ids = [(int) $data['category_id']];
+        }
+
+        $product->categories()->sync($ids);
+
+        // 대표 분류: 선택한 것 중 가장 하위(소분류 우선)를 쓰면 목록·연관상품이 더 정확해진다
+        $primary = null;
+        if ($ids) {
+            $primary = Category::whereIn('id', $ids)->get()
+                ->sortByDesc(fn ($c) => $c->depth)->first()?->id;
+        }
+        if ((int) $product->category_id !== (int) $primary) {
+            $product->update(['category_id' => $primary]);
+        }
     }
 
     /** 옵션 행 저장 — 화면에서 지운 행은 삭제 */

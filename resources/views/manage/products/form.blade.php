@@ -27,12 +27,25 @@
                         </div>
                         <div class="form-row">
                             <label>카테고리</label>
-                            <select class="select" name="category_id">
-                                <option value="">선택 안 함</option>
-                                @foreach($categories as $c)
-                                    <option value="{{ $c->id }}" {{ old('category_id', $product->category_id) == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
-                                @endforeach
-                            </select>
+                            @php
+                                $selectedCats = collect(old('category_ids', $product->exists
+                                    ? $product->categories->pluck('id')->all()
+                                    : array_filter([$product->category_id])))->map(fn($v) => (int) $v)->all();
+                            @endphp
+                            <div class="cat-picker">
+                                @forelse($categories as $c)
+                                    <label class="cat-opt d{{ $c->tree_depth }}">
+                                        <input type="checkbox" name="category_ids[]" value="{{ $c->id }}"
+                                               @checked(in_array($c->id, $selectedCats, true))>
+                                        <span>{{ $c->tree_depth ? '└ ' : '' }}{{ $c->name }}</span>
+                                        <em>{{ \App\Models\Category::DEPTH_LABELS[$c->tree_depth] }}</em>
+                                    </label>
+                                @empty
+                                    <div class="t-sub" style="padding:8px">등록된 카테고리가 없습니다.</div>
+                                @endforelse
+                            </div>
+                            <div class="hint">여러 개를 선택할 수 있습니다. 선택한 것 중 가장 하위 분류가 대표 카테고리가 됩니다.</div>
+                            @error('category_ids')<div class="err-msg">{{ $message }}</div>@enderror
                         </div>
                     </div>
                     <div class="form-2">

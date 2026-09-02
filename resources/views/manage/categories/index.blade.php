@@ -1,7 +1,7 @@
 @extends('manage.layout')
 @section('title', '상품 카테고리')
 @section('page', '상품 카테고리')
-@section('crumb', '쇼핑몰 분류 · 노출 · 진열 순서 관리')
+@section('crumb', '대 · 중 · 소 3단계 분류 · 노출 · 진열 순서')
 @section('actions')
     <a href="{{ route('manage.products.index') }}" class="btn btn-sm">상품 관리 →</a>
 @endsection
@@ -10,52 +10,53 @@
 @php
     $isEdit = (bool) $editing;
     $val = fn($field, $default = null) => old($field, $editing->{$field} ?? $default);
+    $depthBadge = ['대분류' => 'hq', '중분류' => 'ok', '소분류' => 'warn'];
 @endphp
 <div class="grid-2">
     <div>
         <div class="panel">
             <div class="panel-h">
-                <div><h2>카테고리 목록</h2><div class="sub">대분류 아래 소분류를 둘 수 있습니다 (2단계)</div></div>
+                <div><h2>카테고리 목록</h2><div class="sub">대분류 › 중분류 › 소분류 3단계까지 만들 수 있습니다</div></div>
             </div>
             <table class="table">
                 <thead><tr>
                     <th>카테고리</th>
-                    <th style="width:150px">URL 주소</th>
+                    <th style="width:80px">단계</th>
+                    <th style="width:140px">URL 주소</th>
                     <th style="width:70px">상품</th>
                     <th style="width:60px">순서</th>
                     <th style="width:70px">노출</th>
                     <th style="width:150px">관리</th>
                 </tr></thead>
                 <tbody>
-                @forelse($roots as $root)
-                    @php $rows = collect([[$root, 0]])->concat($root->children->map(fn($c) => [$c, 1])); @endphp
-                    @foreach($rows as [$c, $depth])
-                        <tr>
-                            <td>
-                                <span class="t-name" style="padding-left:{{ $depth * 18 }}px">{{ $depth ? '└ ' : '' }}{{ $c->name }}</span>
-                            </td>
-                            <td class="t-sub">{{ $c->slug }}</td>
-                            <td class="t-sub">{{ number_format($counts[$c->id] ?? 0) }}개</td>
-                            <td class="t-sub">{{ $c->sort }}</td>
-                            <td>
-                                @if($c->is_active)<span class="badge ok">노출</span>@else<span class="badge off">숨김</span>@endif
-                            </td>
-                            <td>
-                                <div style="display:flex;gap:6px">
-                                    <a href="{{ route('manage.categories.index', ['edit' => $c->id]) }}" class="btn btn-sm">수정</a>
-                                    <form action="{{ route('manage.categories.toggle', $c) }}" method="post">@csrf
-                                        <button class="btn btn-sm">{{ $c->is_active ? '숨김' : '노출' }}</button>
-                                    </form>
-                                    <form action="{{ route('manage.categories.destroy', $c) }}" method="post"
-                                          onsubmit="return confirm('{{ $c->name }} 카테고리를 삭제할까요?')">@csrf @method('DELETE')
-                                        <button class="btn btn-sm btn-danger">삭제</button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
+                @forelse($tree as $c)
+                    @php $label = \App\Models\Category::DEPTH_LABELS[$c->tree_depth] ?? '분류'; @endphp
+                    <tr>
+                        <td>
+                            <span class="t-name" style="padding-left:{{ $c->tree_depth * 20 }}px">{{ $c->tree_depth ? '└ ' : '' }}{{ $c->name }}</span>
+                        </td>
+                        <td><span class="badge {{ $depthBadge[$label] ?? 'ok' }}">{{ $label }}</span></td>
+                        <td class="t-sub">{{ $c->slug }}</td>
+                        <td class="t-sub">{{ number_format($counts[$c->id] ?? 0) }}개</td>
+                        <td class="t-sub">{{ $c->sort }}</td>
+                        <td>
+                            @if($c->is_active)<span class="badge ok">노출</span>@else<span class="badge off">숨김</span>@endif
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:6px">
+                                <a href="{{ route('manage.categories.index', ['edit' => $c->id]) }}" class="btn btn-sm">수정</a>
+                                <form action="{{ route('manage.categories.toggle', $c) }}" method="post">@csrf
+                                    <button class="btn btn-sm">{{ $c->is_active ? '숨김' : '노출' }}</button>
+                                </form>
+                                <form action="{{ route('manage.categories.destroy', $c) }}" method="post"
+                                      onsubmit="return confirm('{{ $c->name }} 카테고리를 삭제할까요?')">@csrf @method('DELETE')
+                                    <button class="btn btn-sm btn-danger">삭제</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
                 @empty
-                    <tr><td colspan="6" class="empty">등록된 카테고리가 없습니다. 오른쪽에서 첫 카테고리를 추가하세요.</td></tr>
+                    <tr><td colspan="7" class="empty">등록된 카테고리가 없습니다. 오른쪽에서 첫 대분류를 추가하세요.</td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -66,7 +67,7 @@
         <div class="panel">
             <div class="panel-h">
                 <div><h2>{{ $isEdit ? '카테고리 수정' : '카테고리 추가' }}</h2>
-                    <div class="sub">{{ $isEdit ? $editing->name : '쇼핑몰 상단·상품 분류에 사용됩니다' }}</div></div>
+                    <div class="sub">{{ $isEdit ? $editing->tree_path ?? $editing->name : '상위를 고르면 중분류·소분류가 됩니다' }}</div></div>
                 @if($isEdit)<a href="{{ route('manage.categories.index') }}" class="btn btn-sm">새로 추가</a>@endif
             </div>
             <div class="panel-b">
@@ -84,10 +85,13 @@
                         <select class="select" name="parent_id">
                             <option value="">— 대분류로 등록 —</option>
                             @foreach($parents as $p)
-                                @continue($isEdit && $p->id === $editing->id)
-                                <option value="{{ $p->id }}" @selected($val('parent_id') == $p->id)>{{ $p->name }}</option>
+                                <option value="{{ $p->id }}" @selected($val('parent_id') == $p->id)>
+                                    {{ str_repeat('　', $p->tree_depth) }}{{ $p->tree_depth ? '└ ' : '' }}{{ $p->name }}
+                                    ({{ \App\Models\Category::DEPTH_LABELS[$p->tree_depth] }})
+                                </option>
                             @endforeach
                         </select>
+                        <div class="hint">대분류 아래는 중분류, 중분류 아래는 소분류가 됩니다. (최대 3단계)</div>
                         @error('parent_id')<div class="err-msg">{{ $message }}</div>@enderror
                     </div>
                     <div class="form-2">

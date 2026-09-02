@@ -90,8 +90,8 @@ class ShopController extends Controller
     {
         $sort = $request->query('sort', 'recommended');
 
-        // 대분류를 보면 소분류 상품까지 함께 보여준다
-        $categoryIds = $category->children()->pluck('id')->push($category->id)->all();
+        // 상위 분류를 보면 그 아래 중·소분류 상품까지 함께 보여준다
+        $categoryIds = $category->descendantIds();
         $query = Product::query()->visible()
             ->whereHas('categories', fn ($w) => $w->whereIn('categories.id', $categoryIds))
             ->whereNotNull('main_image');
