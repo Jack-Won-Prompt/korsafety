@@ -10,6 +10,7 @@ use App\Support\RichTextSanitizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -224,7 +225,7 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $this->authorizeOwner($product);
-        $data = $this->validated($request);
+        $data = $this->validated($request, $product);
         $this->fill($product, $data, $request);
         $product->save();
         $this->syncCategories($product, $data);
@@ -442,11 +443,18 @@ class ProductController extends Controller
         abort_unless($product->seller_id === $this->sellerId(), 403, '본인 스토어 상품만 관리할 수 있습니다.');
     }
 
-    private function validated(Request $request): array
+    private function validated(Request $request, ?Product $product = null): array
     {
+        // 상품코드는 'YW-3909'처럼 입력해도 숫자만 저장한다
+        $rawCode = trim((string) $request->input('external_no', ''));
+        $code = $rawCode === '' ? null : preg_replace('/\D/', '', $rawCode);
+        $request->merge(['external_no' => ($code === '' ? null : $code)]);
+
         return $request->validate([
             'name' => 'required|string|max:250',
             'sku' => 'nullable|string|max:64',
+            'external_no' => ['nullable', 'integer', 'min:1', 'max:2147483647',
+                Rule::unique('products', 'external_no')->ignore($product?->id)],
             'brand' => 'nullable|string|max:120',
             'category_id' => 'nullable|exists:categories,id',
             'category_ids' => 'nullable|array|max:20',
@@ -469,8 +477,11 @@ class ProductController extends Controller
             'options.*.group_name' => 'nullable|string|max:60',
             'options.*.extra_price' => 'nullable|integer|min:-10000000|max:10000000',
             'options.*.stock' => 'nullable|integer|min:0|max:999999',
-        ], [], [
-            'name' => '상품명', 'price' => '판매가', 'cost_price' => '매입가', 'sale_price' => '할인가',
+        ], [
+            'external_no.unique' => '이미 사용 중인 상품코드입니다. 다른 번호를 입력하거나 비워 두면 자동 부여됩니다.',
+            'external_no.integer' => '상품코드는 숫자로 입력해 주세요. (예: YW-3909 또는 3909)',
+        ], [
+            'name' => '상품명', 'external_no' => '상품코드', 'price' => '판매가', 'cost_price' => '매입가', 'sale_price' => '할인가',
             'stock' => '재고', 'safety_stock' => '안전재고', 'sort' => '진열 순서', 'main_image' => '대표 이미지',
         ]);
     }
@@ -479,6 +490,12 @@ class ProductController extends Controller
     {
         $product->name = $data['name'];
         $product->sku = $data['sku'] ?? null;
+        // 상품코드 — 입력했으면 그 값, 비워 두면 신규 등록 시 자동 부여
+        if (! empty($data['external_no'])) {
+            $product->external_no = (int) $data['external_no'];
+        } elseif (! $product->external_no) {
+            $product->external_no = (int) Product::max('external_no') + 1;
+        }
         $product->brand = $data['brand'] ?? null;
         // 카테고리는 syncCategories()에서 다중 연결과 함께 대표 분류를 정한다
         $product->price = $data['price'] ?? null;

@@ -48,7 +48,16 @@
                             @error('category_ids')<div class="err-msg">{{ $message }}</div>@enderror
                         </div>
                     </div>
-                    <div class="form-2">
+                    <div class="form-3">
+                        <div class="form-row">
+                            <label>상품코드</label>
+                            <div class="code-input">
+                                <span>YW-</span>
+                                <input class="input" name="external_no" value="{{ old('external_no', $product->external_no) }}" placeholder="비워 두면 자동 부여">
+                            </div>
+                            <div class="hint">쇼핑몰 상세에 표시되는 코드입니다. 상품 관리 검색에도 쓰입니다.</div>
+                            @error('external_no')<div class="err-msg">{{ $message }}</div>@enderror
+                        </div>
                         <div class="form-row">
                             <label>SKU (품번)</label>
                             <input class="input" name="sku" value="{{ old('sku', $product->sku) }}" placeholder="예) KS-SHOE-001">
