@@ -51,12 +51,9 @@
                     <div class="form-3">
                         <div class="form-row">
                             <label>상품코드</label>
-                            <div class="code-input">
-                                <span>YW-</span>
-                                <input class="input" name="external_no" value="{{ old('external_no', $product->external_no) }}" placeholder="비워 두면 자동 부여">
-                            </div>
-                            <div class="hint">쇼핑몰 상세에 표시되는 코드입니다. 상품 관리 검색에도 쓰입니다.</div>
-                            @error('external_no')<div class="err-msg">{{ $message }}</div>@enderror
+                            <input class="input" name="product_code" value="{{ old('product_code', $product->product_code) }}" placeholder="예) KS-A-001">
+                            <div class="hint">입력한 값이 그대로 쇼핑몰 상세에 표시되고, 상품 검색에도 쓰입니다.</div>
+                            @error('product_code')<div class="err-msg">{{ $message }}</div>@enderror
                         </div>
                         <div class="form-row">
                             <label>SKU (품번)</label>

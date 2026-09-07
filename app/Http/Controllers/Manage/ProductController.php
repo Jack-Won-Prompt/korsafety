@@ -50,12 +50,12 @@ class ProductController extends Controller
             $query->where(function ($w) use ($q) {
                 $w->where('name', 'like', "%$q%")
                     ->orWhere('brand', 'like', "%$q%")
-                    ->orWhere('sku', 'like', "%$q%");
+                    ->orWhere('sku', 'like', "%$q%")
+                    ->orWhere('product_code', 'like', "%$q%");
 
-                // 상품코드로도 찾는다 — 쇼핑몰 표기(YW-3909), 숫자만(3909), 상품 ID(P2292)
-                if (preg_match('/^(?:yw[-\s]?|p)?(\d+)$/i', $q, $m)) {
-                    $code = (int) $m[1];
-                    $w->orWhere('external_no', $code)->orWhere('id', $code);
+                // 스크랩 원본 번호와 상품 ID로도 찾을 수 있게 (입력 전체가 숫자일 때만)
+                if (preg_match('/^\d+$/', $q)) {
+                    $w->orWhere('external_no', (int) $q)->orWhere('id', (int) $q);
                 }
             });
         }
@@ -311,7 +311,7 @@ class ProductController extends Controller
     }
 
     /** CSV 헤더 (엑셀 호환, UTF-8) */
-    private const CSV_HEADER = ['상품ID', 'SKU', '상품명', '브랜드', '카테고리', '판매가', '할인가', '재고', '품절(1=품절)', '노출(1=노출)', '대표이미지경로'];
+    private const CSV_HEADER = ['상품ID', '상품코드', 'SKU', '상품명', '브랜드', '카테고리', '판매가', '할인가', '재고', '품절(1=품절)', '노출(1=노출)', '대표이미지경로'];
 
     /** 전체 품목 엑셀(CSV) 다운로드 — 현재 스토어 스코프 */
     public function exportCsv()
@@ -326,6 +326,7 @@ class ProductController extends Controller
             foreach ($products as $p) {
                 fputcsv($out, [
                     $p->id,
+                    $p->product_code,
                     $p->sku,
                     $p->name,
                     $p->brand,
@@ -384,7 +385,7 @@ class ProductController extends Controller
             // 빈 줄 스킵
             if (count(array_filter($row, fn ($v) => trim((string) $v) !== '')) === 0) { continue; }
 
-            [$id, $sku, $name, $brand, $catName, $price, $sale, $stock, $soldout, $active, $image] = array_pad($row, 11, null);
+            [$id, $code, $sku, $name, $brand, $catName, $price, $sale, $stock, $soldout, $active, $image] = array_pad($row, 12, null);
             $name = trim((string) $name);
             if ($name === '') { $skipped++; continue; }
 
@@ -403,6 +404,7 @@ class ProductController extends Controller
 
             $product->name = $name;
             $product->sku = trim((string) $sku) ?: null;
+            $product->product_code = trim((string) $code) ?: null;
             $product->brand = trim((string) $brand) ?: null;
             if ($catId) { $product->category_id = $catId; }
             $product->price = is_numeric($price) ? (int) $price : null;
@@ -445,16 +447,11 @@ class ProductController extends Controller
 
     private function validated(Request $request, ?Product $product = null): array
     {
-        // 상품코드는 'YW-3909'처럼 입력해도 숫자만 저장한다
-        $rawCode = trim((string) $request->input('external_no', ''));
-        $code = $rawCode === '' ? null : preg_replace('/\D/', '', $rawCode);
-        $request->merge(['external_no' => ($code === '' ? null : $code)]);
-
         return $request->validate([
             'name' => 'required|string|max:250',
             'sku' => 'nullable|string|max:64',
-            'external_no' => ['nullable', 'integer', 'min:1', 'max:2147483647',
-                Rule::unique('products', 'external_no')->ignore($product?->id)],
+            'product_code' => ['nullable', 'string', 'max:64',
+                Rule::unique('products', 'product_code')->ignore($product?->id)],
             'brand' => 'nullable|string|max:120',
             'category_id' => 'nullable|exists:categories,id',
             'category_ids' => 'nullable|array|max:20',
@@ -478,10 +475,9 @@ class ProductController extends Controller
             'options.*.extra_price' => 'nullable|integer|min:-10000000|max:10000000',
             'options.*.stock' => 'nullable|integer|min:0|max:999999',
         ], [
-            'external_no.unique' => '이미 사용 중인 상품코드입니다. 다른 번호를 입력하거나 비워 두면 자동 부여됩니다.',
-            'external_no.integer' => '상품코드는 숫자로 입력해 주세요. (예: YW-3909 또는 3909)',
+            'product_code.unique' => '이미 사용 중인 상품코드입니다. 다른 값을 입력해 주세요.',
         ], [
-            'name' => '상품명', 'external_no' => '상품코드', 'price' => '판매가', 'cost_price' => '매입가', 'sale_price' => '할인가',
+            'name' => '상품명', 'product_code' => '상품코드', 'price' => '판매가', 'cost_price' => '매입가', 'sale_price' => '할인가',
             'stock' => '재고', 'safety_stock' => '안전재고', 'sort' => '진열 순서', 'main_image' => '대표 이미지',
         ]);
     }
@@ -490,12 +486,8 @@ class ProductController extends Controller
     {
         $product->name = $data['name'];
         $product->sku = $data['sku'] ?? null;
-        // 상품코드 — 입력했으면 그 값, 비워 두면 신규 등록 시 자동 부여
-        if (! empty($data['external_no'])) {
-            $product->external_no = (int) $data['external_no'];
-        } elseif (! $product->external_no) {
-            $product->external_no = (int) Product::max('external_no') + 1;
-        }
+        // 상품코드는 관리자가 입력한 값을 그대로 쓴다 (비워 두면 없음)
+        $product->product_code = trim((string) ($data['product_code'] ?? '')) ?: null;
         $product->brand = $data['brand'] ?? null;
         // 카테고리는 syncCategories()에서 다중 연결과 함께 대표 분류를 정한다
         $product->price = $data['price'] ?? null;

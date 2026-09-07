@@ -279,8 +279,3 @@ input[type=range]{width:100%;accent-color:var(--accent);height:28px}
 .t-sub .pcode{color:var(--ink-2);font-weight:800;letter-spacing:.02em}
 .form-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 @media (max-width:1200px){ .form-3{grid-template-columns:1fr 1fr} }
-.code-input{display:flex;align-items:center;gap:0}
-.code-input span{flex:0 0 auto;height:46px;display:grid;place-items:center;padding:0 12px;
-  border:1.5px solid var(--line);border-right:0;border-radius:10px 0 0 10px;background:var(--bg);
-  font-weight:800;font-size:13.5px;color:var(--muted)}
-.code-input .input{border-radius:0 10px 10px 0}

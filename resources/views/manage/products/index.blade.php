@@ -58,7 +58,7 @@
 <div class="panel">
     <div class="panel-b">
         <form method="get" style="display:flex;flex-wrap:nowrap;gap:8px;align-items:center;width:100%">
-            <input class="input" style="height:38px;flex:1 1 0;min-width:120px" name="q" value="{{ $q }}" placeholder="상품명 · 브랜드 · SKU · 상품코드(YW-3909) 검색">
+            <input class="input" style="height:38px;flex:1 1 0;min-width:120px" name="q" value="{{ $q }}" placeholder="상품명 · 브랜드 · SKU · 상품코드 검색">
             <select class="input" style="height:38px;flex:0 0 140px" name="category_id">
                 <option value="">전체 카테고리</option>
                 @foreach($categories as $c)
@@ -138,7 +138,7 @@
                     <td>
                         <a href="{{ route('manage.products.edit', $p) }}" class="t-name">{{ \Illuminate\Support\Str::limit($p->name, 42) }}</a>
                         <div class="t-sub">
-                            @if($p->external_no)<b class="pcode">YW-{{ $p->external_no }}</b> · @endif{{ $p->sku ? "SKU ".$p->sku : "SKU 미지정" }}@if($p->brand) · {{ $p->brand }}@endif
+                            @if($p->product_code)<b class="pcode">{{ $p->product_code }}</b> · @endif{{ $p->sku ? "SKU ".$p->sku : "SKU 미지정" }}@if($p->brand) · {{ $p->brand }}@endif
                             @if($p->margin_percent !== null) · 마진 {{ $p->margin_percent }}%@endif
                         </div>
                     </td>

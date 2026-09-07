@@ -56,7 +56,7 @@
             </div>
 
             <dl class="pd-meta">
-                @if($product->external_no)<div class="row"><dt>상품코드</dt><dd>YW-{{ $product->external_no }}</dd></div>@endif
+                @if($product->product_code)<div class="row"><dt>상품코드</dt><dd>{{ $product->product_code }}</dd></div>@endif
                 <div class="row"><dt>카테고리</dt><dd>{{ $product->category->name ?? '-' }}</dd></div>
                 <div class="row"><dt>배송</dt><dd>택배 · 오후 2시 이전 주문 당일출고</dd></div>
                 <div class="row"><dt>인증</dt><dd>KCs 안전인증 정품</dd></div>
