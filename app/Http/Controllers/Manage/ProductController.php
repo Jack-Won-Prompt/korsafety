@@ -46,9 +46,17 @@ class ProductController extends Controller
         $query = $this->scoped()->with('category');
 
         if ($q !== '') {
-            $query->where(fn ($w) => $w->where('name', 'like', "%$q%")
-                ->orWhere('brand', 'like', "%$q%")
-                ->orWhere('sku', 'like', "%$q%"));
+            $query->where(function ($w) use ($q) {
+                $w->where('name', 'like', "%$q%")
+                    ->orWhere('brand', 'like', "%$q%")
+                    ->orWhere('sku', 'like', "%$q%");
+
+                // 상품코드로도 찾는다 — 쇼핑몰 표기(YW-3909), 숫자만(3909), 상품 ID(P2292)
+                if (preg_match('/^(?:yw[-\s]?|p)?(\d+)$/i', $q, $m)) {
+                    $code = (int) $m[1];
+                    $w->orWhere('external_no', $code)->orWhere('id', $code);
+                }
+            });
         }
         if ($categoryId) {
             // 다중 카테고리를 쓰므로 연결 기준으로 찾고, 상위를 고르면 하위 분류까지 포함한다

@@ -58,7 +58,7 @@
 <div class="panel">
     <div class="panel-b">
         <form method="get" style="display:flex;flex-wrap:nowrap;gap:8px;align-items:center;width:100%">
-            <input class="input" style="height:38px;flex:1 1 0;min-width:120px" name="q" value="{{ $q }}" placeholder="상품명 · 브랜드 · SKU 검색">
+            <input class="input" style="height:38px;flex:1 1 0;min-width:120px" name="q" value="{{ $q }}" placeholder="상품명 · 브랜드 · SKU · 상품코드(YW-3909) 검색">
             <select class="input" style="height:38px;flex:0 0 140px" name="category_id">
                 <option value="">전체 카테고리</option>
                 @foreach($categories as $c)
@@ -122,7 +122,7 @@
             <thead><tr>
                 <th style="width:34px"><input type="checkbox" id="chkAll" title="전체 선택"></th>
                 <th style="width:56px">이미지</th>
-                <th>상품명 / SKU</th>
+                <th>상품명 / 코드 · SKU</th>
                 <th style="width:110px">카테고리</th>
                 <th style="width:112px">판매가</th>
                 <th style="width:112px">할인가</th>
@@ -138,7 +138,7 @@
                     <td>
                         <a href="{{ route('manage.products.edit', $p) }}" class="t-name">{{ \Illuminate\Support\Str::limit($p->name, 42) }}</a>
                         <div class="t-sub">
-                            {{ $p->sku ? 'SKU '.$p->sku : 'SKU 미지정' }}@if($p->brand) · {{ $p->brand }}@endif
+                            @if($p->external_no)<b class="pcode">YW-{{ $p->external_no }}</b> · @endif{{ $p->sku ? "SKU ".$p->sku : "SKU 미지정" }}@if($p->brand) · {{ $p->brand }}@endif
                             @if($p->margin_percent !== null) · 마진 {{ $p->margin_percent }}%@endif
                         </div>
                     </td>
