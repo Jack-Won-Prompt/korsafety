@@ -34,21 +34,38 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Share navigation categories and cart count with every view.
+        // 오류 페이지(404·500 등)도 이 컴포저를 거치므로, DB·세션이 죽어도
+        // 화면 자체는 뜨도록 각 조회의 실패를 흡수하고 기본값을 쓴다.
         View::composer('*', function ($view) {
+            $cats = collect();
+            $cartCount = 0;
+            $maintenanceOn = false;
+            $signupOn = true;
+
             try {
                 // 상단 메뉴는 대분류, 하위 메뉴로 중·소분류를 펼친다
                 $cats = Category::active()->roots()
                     ->with(['children' => fn ($q) => $q->where('is_active', true)->with(['children' => fn ($q2) => $q2->where('is_active', true)])])
                     ->orderBy('sort')->get();
             } catch (\Throwable $e) {
-                $cats = collect();
+                // 카테고리를 못 읽으면 메뉴만 비운다
             }
+
+            try {
+                $cartCount = array_sum(session()->get('cart', []));   // 세션 드라이버가 DB라 실패할 수 있다
+            } catch (\Throwable $e) {
+            }
+
+            try {
+                $maintenanceOn = Setting::bool('maintenance_mode');   // 유지보수 모드: 카테고리 링크 비활성 표시
+                $signupOn = Setting::bool('signup_enabled');          // 회원가입·신청 링크 노출 여부
+            } catch (\Throwable $e) {
+            }
+
             $view->with('navCategories', $cats);
-            $view->with('cartCount', array_sum(session()->get('cart', [])));
-            // 유지보수 모드: 카테고리 링크 등을 비활성 표시하는 데 사용
-            $view->with('maintenanceOn', Setting::bool('maintenance_mode'));
-            // 회원가입 노출 여부 (헤더·모바일 메뉴·로그인 화면의 가입 링크)
-            $view->with('signupOn', Setting::bool('signup_enabled'));
+            $view->with('cartCount', $cartCount);
+            $view->with('maintenanceOn', $maintenanceOn);
+            $view->with('signupOn', $signupOn);
         });
     }
 }
