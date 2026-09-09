@@ -1,7 +1,7 @@
 @extends('layouts.app')
-@section('title', $category->name . ' · KOR SAFETY')
-@section('meta_desc', $category->name.' 전문 쇼핑몰 — '.($parent ? $parent->name.' > ' : '').$category->name.' 상품 '.number_format($products->total()).'종. 안전인증 정품을 (주)한국안전에서 합리적인 가격으로 만나보세요.')
-@section('canonical', route('category.show', $category))
+@section('title', $category->name.($products->currentPage() > 1 ? ' '.$products->currentPage().'페이지' : '').' · KOR SAFETY')
+@section('meta_desc', $category->name.' 전문 쇼핑몰 — '.($parent ? $parent->name.' > ' : '').$category->name.' 상품 '.number_format($products->total()).'종'.($products->currentPage() > 1 ? ' ('.$products->currentPage().'페이지)' : '').'. 안전인증 정품을 (주)한국안전에서 합리적인 가격으로 만나보세요.')
+@section('canonical', route('category.show', $category).($products->currentPage() > 1 ? '?page='.$products->currentPage() : ''))
 
 @push('jsonld')
 @php
