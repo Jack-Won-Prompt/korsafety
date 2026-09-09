@@ -46,6 +46,7 @@
     ];
 @endphp
 <div class="wrap">
+    <h1 class="sr-only">산업안전용품 전문 쇼핑몰 — 안전화 · 개인보호구 · 작업복 · 안전시설물 | (주)한국안전</h1>
     <section class="hero-slider" id="hero" data-interval="5500">
         <div class="hs-track">
             @foreach($heroSlides as $i => $s)

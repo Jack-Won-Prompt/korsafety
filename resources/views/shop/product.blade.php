@@ -77,11 +77,11 @@
             @if($gallery->count() > 1 || $product->main_image)
             <div class="pd-thumbs">
                 @if($product->main_image)
-                    <button class="active"><img src="{{ asset($product->main_image) }}" alt=""></button>
+                    <button class="active"><img src="{{ asset($product->main_image) }}" alt="{{ $product->name }} 대표 이미지"></button>
                 @endif
                 @foreach($gallery as $img)
                     @continue($img->path === $product->main_image)
-                    <button><img src="{{ asset($img->path) }}" alt="" onerror="this.closest('button').style.display='none'"></button>
+                    <button><img src="{{ asset($img->path) }}" alt="{{ $product->name }} 상세 이미지 {{ $loop->iteration }}" onerror="this.closest('button').style.display='none'"></button>
                 @endforeach
             </div>
             @endif
