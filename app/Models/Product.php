@@ -49,6 +49,36 @@ class Product extends Model
         return $query->where('track_stock', true)->where('stock', '<=', 0);
     }
 
+    /**
+     * 검색 친화 URL — /product/3270-크린가드-s40-위생화단화
+     * 앞의 숫자가 실제 식별자라 상품명이 바뀌거나 겹쳐도 주소가 깨지지 않는다.
+     */
+    public function getRouteKey(): string
+    {
+        $slug = $this->urlSlug();
+
+        return $slug === '' ? (string) $this->id : $this->id.'-'.$slug;
+    }
+
+    public function resolveRouteBinding($value, $field = null)
+    {
+        if ($field) {
+            return parent::resolveRouteBinding($value, $field);
+        }
+
+        // '3270-크린가드-s40'에서 앞의 숫자만 떼어 조회한다
+        return $this->newQuery()->find((int) $value);
+    }
+
+    /** URL에 쓸 슬러그 — Str::slug는 한글을 통째로 지우므로 직접 만든다 */
+    public function urlSlug(): string
+    {
+        $s = mb_strtolower(trim((string) $this->name));
+        $s = preg_replace('/[^가-힣ㄱ-ㅎa-z0-9]+/u', '-', $s);
+
+        return mb_substr(trim($s, '-'), 0, 60);
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);

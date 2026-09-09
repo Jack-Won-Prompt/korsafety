@@ -35,7 +35,7 @@ Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap')
 Route::get('/search', [ShopController::class, 'search'])->name('search');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.add');
+Route::post('/cart/add/{product:id}', [CartController::class, 'add'])->name('cart.add');
 // {key}는 상품 id 또는 "상품id:옵션id" 형태 (옵션별로 장바구니 줄이 나뉜다)
 Route::patch('/cart/update/{key}', [CartController::class, 'update'])->name('cart.update');
 Route::delete('/cart/remove/{key}', [CartController::class, 'remove'])->name('cart.remove');
@@ -112,8 +112,8 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
     Route::get('best-sellers', [AdminBestSeller::class, 'index'])->name('admin.bestsellers');
     Route::post('best-sellers/add', [AdminBestSeller::class, 'add'])->name('admin.bestsellers.add');
     Route::post('best-sellers/reorder', [AdminBestSeller::class, 'reorder'])->name('admin.bestsellers.reorder');
-    Route::post('best-sellers/{product}/move', [AdminBestSeller::class, 'move'])->name('admin.bestsellers.move');
-    Route::post('best-sellers/{product}/remove', [AdminBestSeller::class, 'remove'])->name('admin.bestsellers.remove');
+    Route::post('best-sellers/{product:id}/move', [AdminBestSeller::class, 'move'])->name('admin.bestsellers.move');
+    Route::post('best-sellers/{product:id}/remove', [AdminBestSeller::class, 'remove'])->name('admin.bestsellers.remove');
 
     Route::get('visits', [AdminVisitLog::class, 'index'])->name('admin.visits');
     Route::post('visits/purge', [AdminVisitLog::class, 'purge'])->name('admin.visits.purge');
@@ -218,10 +218,10 @@ Route::prefix('manage')->middleware('role:hq_admin,seller')->group(function () {
     Route::post('products/import', [ManageProduct::class, 'importCsv'])->name('manage.products.import');
     Route::get('products/create', [ManageProduct::class, 'create'])->name('manage.products.create');
     Route::post('products', [ManageProduct::class, 'store'])->name('manage.products.store');
-    Route::get('products/{product}/edit', [ManageProduct::class, 'edit'])->name('manage.products.edit');
-    Route::put('products/{product}', [ManageProduct::class, 'update'])->name('manage.products.update');
-    Route::delete('products/{product}', [ManageProduct::class, 'destroy'])->name('manage.products.destroy');
-    Route::get('products/{product}/image', [ManageProduct::class, 'editImage'])->name('manage.products.image');
-    Route::post('products/{product}/image', [ManageProduct::class, 'saveImage'])->name('manage.products.image.save');
+    Route::get('products/{product:id}/edit', [ManageProduct::class, 'edit'])->name('manage.products.edit');
+    Route::put('products/{product:id}', [ManageProduct::class, 'update'])->name('manage.products.update');
+    Route::delete('products/{product:id}', [ManageProduct::class, 'destroy'])->name('manage.products.destroy');
+    Route::get('products/{product:id}/image', [ManageProduct::class, 'editImage'])->name('manage.products.image');
+    Route::post('products/{product:id}/image', [ManageProduct::class, 'saveImage'])->name('manage.products.image.save');
     Route::get('orders', [ManageOrder::class, 'index'])->name('manage.orders');
 });

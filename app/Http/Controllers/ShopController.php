@@ -123,6 +123,12 @@ class ShopController extends Controller
             abort_unless($u && ($u->isHqAdmin() || $u->isSeller()), 404);
         }
 
+        // 예전 주소(/product/2292)나 옛 상품명으로 들어오면 현재 정규 주소로 넘긴다
+        $requested = $request->route()->originalParameters()['product'] ?? null;
+        if ($requested !== null && (string) $requested !== $product->getRouteKey()) {
+            return redirect()->route('product.show', $product, 301);
+        }
+
         VisitLog::recordProduct($request, $product);
 
         $product->load(['images', 'category', 'activeOptions']);
