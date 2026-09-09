@@ -52,6 +52,27 @@ class AdminController extends Controller
     }
 
     /** 최근 14일 일별 매출 시계열 (seller 지정 시 해당 스토어) */
+    /**
+     * 검색엔진 소유확인 코드에서 토큰만 뽑는다.
+     * 메타 태그 전체(<meta ... content="XXX">), DNS 형식(google-site-verification=XXX),
+     * 토큰만 붙여넣어도 모두 받아준다.
+     */
+    private function verifyToken(?string $raw): string
+    {
+        $raw = trim((string) $raw);
+        if ($raw === '') {
+            return '';
+        }
+        if (preg_match('/content\s*=\s*["\']([^"\']+)["\']/i', $raw, $m)) {
+            return trim($m[1]);
+        }
+        if (str_contains($raw, '=')) {
+            $raw = substr($raw, strrpos($raw, '=') + 1);
+        }
+
+        return trim($raw, " \t\n\r\0\x0B\"'<>/");
+    }
+
     private function dailySeries(?int $sellerId): array
     {
         $q = OrderItem::query()
@@ -277,8 +298,8 @@ class AdminController extends Controller
         Setting::put('contact_banner_text', trim((string) $request->input('contact_banner_text')) ?: Setting::DEFAULTS['contact_banner_text']);
         Setting::put('contact_banner_phone', trim((string) $request->input('contact_banner_phone')) ?: Setting::DEFAULTS['contact_banner_phone']);
         Setting::put('signup_enabled', $request->boolean('signup_enabled') ? '1' : '0');
-        Setting::put('seo_naver_verify', trim((string) $request->input('seo_naver_verify')));
-        Setting::put('seo_google_verify', trim((string) $request->input('seo_google_verify')));
+        Setting::put('seo_naver_verify', $this->verifyToken($request->input('seo_naver_verify')));
+        Setting::put('seo_google_verify', $this->verifyToken($request->input('seo_google_verify')));
         Setting::put('sr_notify_email', trim((string) $request->input('sr_notify_email')) ?: Setting::DEFAULTS['sr_notify_email']);
         return redirect()->route('admin.settings')->with('status', '설정이 저장되었습니다.');
     }
