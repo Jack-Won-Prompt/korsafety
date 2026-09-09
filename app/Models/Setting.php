@@ -26,6 +26,9 @@ class Setting extends Model
         'contact_banner_phone'   => '02-2273-9533',
         // 쇼핑몰 회원가입 영역 노출 (끄면 가입 링크가 사라지고 가입 페이지도 막힘)
         'signup_enabled'         => '1',
+        // 검색엔진 사이트 소유확인 코드 (네이버 서치어드바이저 · 구글 서치콘솔)
+        'seo_naver_verify'       => '',
+        'seo_google_verify'      => '',
         // SR 접수 알림 수신 주소 (쉼표로 여러 명 지정 가능)
         'sr_notify_email'        => 'jack@withworks.co.kr',
     ];

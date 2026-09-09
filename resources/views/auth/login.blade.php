@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', '로그인 · KOR SAFETY')
+@section('robots', 'noindex,nofollow')
 
 @section('content')
 <div class="wrap">

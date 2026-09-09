@@ -248,6 +248,8 @@ class AdminController extends Controller
             'contact_banner_text'    => Setting::get('contact_banner_text'),
             'contact_banner_phone'   => Setting::get('contact_banner_phone'),
             'signup_enabled'         => Setting::bool('signup_enabled'),
+            'seo_naver_verify'       => Setting::get('seo_naver_verify'),
+            'seo_google_verify'      => Setting::get('seo_google_verify'),
             'sr_notify_email'        => Setting::get('sr_notify_email'),
         ];
         return view('admin.settings', compact('settings'));
@@ -275,6 +277,8 @@ class AdminController extends Controller
         Setting::put('contact_banner_text', trim((string) $request->input('contact_banner_text')) ?: Setting::DEFAULTS['contact_banner_text']);
         Setting::put('contact_banner_phone', trim((string) $request->input('contact_banner_phone')) ?: Setting::DEFAULTS['contact_banner_phone']);
         Setting::put('signup_enabled', $request->boolean('signup_enabled') ? '1' : '0');
+        Setting::put('seo_naver_verify', trim((string) $request->input('seo_naver_verify')));
+        Setting::put('seo_google_verify', trim((string) $request->input('seo_google_verify')));
         Setting::put('sr_notify_email', trim((string) $request->input('sr_notify_email')) ?: Setting::DEFAULTS['sr_notify_email']);
         return redirect()->route('admin.settings')->with('status', '설정이 저장되었습니다.');
     }

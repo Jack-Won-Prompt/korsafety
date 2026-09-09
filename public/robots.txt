@@ -1,2 +1,19 @@
 User-agent: *
-Disallow:
+Allow: /
+
+# 관리·개인 영역은 색인 대상이 아님
+Disallow: /admin
+Disallow: /manage
+Disallow: /seller
+Disallow: /agent
+Disallow: /purchaser
+Disallow: /cart
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /account
+Disallow: /api/
+Disallow: /search
+
+Sitemap: https://korsafety.co.kr/sitemap.xml

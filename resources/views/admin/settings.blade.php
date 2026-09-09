@@ -91,6 +91,30 @@
     </div>
 
     <div class="panel">
+        <div class="panel-h"><div><h2>검색 노출 (SEO)</h2><div class="sub">네이버·구글에 사이트를 등록할 때 쓰는 소유확인 코드</div></div></div>
+        <div class="panel-b">
+            <div class="form-2">
+                <div class="form-row" style="margin-bottom:0">
+                    <label>네이버 서치어드바이저</label>
+                    <input class="input" type="text" name="seo_naver_verify" maxlength="200"
+                           value="{{ old('seo_naver_verify', $settings['seo_naver_verify']) }}"
+                           placeholder="naver-site-verification 값">
+                </div>
+                <div class="form-row" style="margin-bottom:0">
+                    <label>구글 서치콘솔</label>
+                    <input class="input" type="text" name="seo_google_verify" maxlength="200"
+                           value="{{ old('seo_google_verify', $settings['seo_google_verify']) }}"
+                           placeholder="google-site-verification 값">
+                </div>
+            </div>
+            <div class="hint" style="margin-top:12px">
+                각 사이트에서 발급한 <b>content 값만</b> 넣으면 됩니다(메타 태그 전체를 붙여넣지 마세요). 저장하면 모든 쇼핑몰 페이지 &lt;head&gt;에 들어갑니다.<br>
+                사이트맵 주소 — <a href="{{ url('/sitemap.xml') }}" target="_blank"><b>{{ url('/sitemap.xml') }}</b></a> (네이버·구글에 이 주소를 제출하세요)
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
         <div class="panel-h"><div><h2>SR 알림</h2><div class="sub">서비스 요청이 접수되면 담당자에게 메일로 알립니다</div></div></div>
         <div class="panel-b">
             <label style="font-weight:700;font-size:14px;display:block;margin-bottom:8px">접수 알림 수신 주소</label>

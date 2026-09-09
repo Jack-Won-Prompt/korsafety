@@ -4,8 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'KOR SAFETY · 산업안전용품 전문 쇼핑몰')</title>
-    <meta name="description" content="@yield('meta_desc', '안전화, 워크웨어, 안전용품, 안전시설물까지 — 현장을 지키는 모든 안전장비를 한 곳에서.')">
+    @include('partials.seo')
     <link rel="icon" type="image/png" href="{{ asset('brand/favicon.png') }}?v={{ @filemtime(public_path('brand/favicon.png')) }}">
     <link rel="apple-touch-icon" href="{{ asset('brand/icon.png') }}">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">

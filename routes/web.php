@@ -26,10 +26,12 @@ use App\Http\Controllers\Manage\ProductController as ManageProduct;
 use App\Http\Controllers\Manage\ServiceRequestController as ManageSr;
 use App\Http\Controllers\SellerController;
 use App\Http\Controllers\ShopController;
+use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [ShopController::class, 'home'])->name('home');
 Route::get('/about', [ShopController::class, 'about'])->name('about');
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('/search', [ShopController::class, 'search'])->name('search');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');

@@ -1,6 +1,56 @@
 @extends('layouts.app')
 @section('title', $product->name . ' · KOR SAFETY')
-@section('meta_desc', $product->name)
+@section('meta_desc', \Illuminate\Support\Str::limit(trim(($product->brand ? $product->brand.' ' : '').$product->name.' — '.($product->description ? strip_tags($product->description) : ($product->category->name ?? '산업안전용품').' 전문몰 (주)한국안전에서 정품으로 만나보세요.')), 150))
+@section('og_type', 'product')
+@section('og_image', $product->main_image ? asset($product->main_image) : '')
+
+@push('jsonld')
+@php
+    // 가격 문의 모드에서는 가격을 노출하지 않으므로 offers도 넣지 않는다
+    $seoPrice = \App\Models\Setting::get('price_display_mode') === 'price' ? $product->final_price : null;
+
+    $seoProduct = array_filter([
+        '@context' => 'https://schema.org',
+        '@type' => 'Product',
+        'name' => $product->name,
+        'sku' => $product->product_code ?: ($product->sku ?: null),
+        'image' => $product->main_image ? asset($product->main_image) : null,
+        'description' => $product->description
+            ? \Illuminate\Support\Str::limit(strip_tags($product->description), 300)
+            : $product->name,
+        'brand' => $product->brand ? ['@type' => 'Brand', 'name' => $product->brand] : null,
+        'category' => $product->category->name ?? null,
+        'url' => route('product.show', $product),
+        'offers' => $seoPrice ? [
+            '@type' => 'Offer',
+            'price' => (string) $seoPrice,
+            'priceCurrency' => 'KRW',
+            'availability' => $product->is_soldout ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+            'url' => route('product.show', $product),
+            'seller' => ['@type' => 'Organization', 'name' => config('company.name')],
+        ] : null,
+    ]);
+
+    $seoCrumbs = [['name' => '홈', 'item' => url('/')]];
+    if ($product->category) {
+        if ($parentCat = $product->category->parent) {
+            $seoCrumbs[] = ['name' => $parentCat->name, 'item' => route('category.show', $parentCat)];
+        }
+        $seoCrumbs[] = ['name' => $product->category->name, 'item' => route('category.show', $product->category)];
+    }
+    $seoCrumbs[] = ['name' => $product->name, 'item' => route('product.show', $product)];
+
+    $seoBread = [
+        '@context' => 'https://schema.org',
+        '@type' => 'BreadcrumbList',
+        'itemListElement' => collect($seoCrumbs)->values()->map(fn ($c, $i) => [
+            '@type' => 'ListItem', 'position' => $i + 1, 'name' => $c['name'], 'item' => $c['item'],
+        ])->all(),
+    ];
+@endphp
+<script type="application/ld+json">{!! json_encode($seoProduct, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
+<script type="application/ld+json">{!! json_encode($seoBread, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
+@endpush
 
 @php
     $gallery = $product->galleryImages;

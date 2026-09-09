@@ -1,5 +1,24 @@
 @extends('layouts.app')
 @section('title', $category->name . ' · KOR SAFETY')
+@section('meta_desc', $category->name.' 전문 쇼핑몰 — '.($parent ? $parent->name.' > ' : '').$category->name.' 상품 '.number_format($products->total()).'종. 안전인증 정품을 (주)한국안전에서 합리적인 가격으로 만나보세요.')
+@section('canonical', route('category.show', $category))
+
+@push('jsonld')
+@php
+    $seoCrumbs = [['name' => '홈', 'item' => url('/')]];
+    if ($parent) { $seoCrumbs[] = ['name' => $parent->name, 'item' => route('category.show', $parent)]; }
+    $seoCrumbs[] = ['name' => $category->name, 'item' => route('category.show', $category)];
+
+    $seoBread = [
+        '@context' => 'https://schema.org',
+        '@type' => 'BreadcrumbList',
+        'itemListElement' => collect($seoCrumbs)->values()->map(fn ($c, $i) => [
+            '@type' => 'ListItem', 'position' => $i + 1, 'name' => $c['name'], 'item' => $c['item'],
+        ])->all(),
+    ];
+@endphp
+<script type="application/ld+json">{!! json_encode($seoBread, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
+@endpush
 
 @section('content')
 <div class="wrap">
