@@ -39,3 +39,6 @@ Thumbs.db
 
 # 로고 원본(대용량) — 웹 에셋은 public/brand/logo-wordmark*.png 사용
 /result_large_text.png
+
+# Google Ads 애셋 산출물 (저장소에 넣지 않음)
+/google-ads
