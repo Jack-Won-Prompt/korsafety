@@ -42,3 +42,5 @@ Thumbs.db
 
 # Google Ads 애셋 산출물 (저장소에 넣지 않음)
 /google-ads
+# SSL 인증서 도메인 검증 파일. 서버마다 다르고 발급 때 생긴다 — 지우면 갱신이 막힌다.
+/public/.well-known/
