@@ -177,10 +177,19 @@ class ErrorLog extends Model
         return mb_substr((string) $m, 0, 300);
     }
 
+    /**
+     * 스택 트레이스 — 위치와 호출만 남기고 인자 값은 뺀다.
+     * getTraceAsString()은 인자를 앞 15자까지 찍어서 경로 토큰 · 비밀번호가 트레이스에 남는다.
+     */
     private static function trace(Throwable $e): string
     {
-        $base = str_replace('\\', '/', base_path()).'/';
-        $out = str_replace([base_path().DIRECTORY_SEPARATOR, $base], '', $e->getTraceAsString());
+        $lines = [];
+        foreach ($e->getTrace() as $i => $f) {
+            $where = isset($f['file']) ? self::relative($f['file']).'('.($f['line'] ?? 0).')' : '[internal function]';
+            $lines[] = '#'.$i.' '.$where.': '.($f['class'] ?? '').($f['type'] ?? '').($f['function'] ?? '').'()';
+        }
+        $lines[] = '#'.count($lines).' {main}';
+        $out = implode("\n", $lines);
 
         $prev = $e->getPrevious();
         $depth = 0;
@@ -221,7 +230,7 @@ class ErrorLog extends Model
 
         return [
             'source' => $request->is('api/*') ? 'api' : 'web',
-            'url' => mb_substr($request->fullUrl(), 0, 1000),
+            'url' => mb_substr(self::maskUrl($request), 0, 1000),
             'method' => $request->method(),
             'ip_address' => $request->ip(),
             'user_id' => $userId,
@@ -230,12 +239,67 @@ class ErrorLog extends Model
         ];
     }
 
+    /** 가려서 저장할 이름 규칙 — 요청 파라미터 키 · 쿼리스트링 키 · 라우트 파라미터 이름에 공통 적용 */
+    private const SENSITIVE_KEY = '/pass|token|secret|signature|card|cvc|cvv|api_?key|authorization|account_?no/i';
+
+    private const MASK = '[숨김]';
+
+    /**
+     * 기록용 URL — 어떤 화면인지는 남기고 민감한 값만 가린다.
+     *  · 경로: 이름이 SENSITIVE_KEY에 걸리는 라우트 파라미터 자리 (/reset-password/{token}, /inquiry/{token}/poll 등)
+     *  · 쿼리스트링: 키는 남기고 값만
+     */
+    public static function maskUrl(\Illuminate\Http\Request $request): string
+    {
+        $path = $request->getPathInfo();
+
+        // 라우팅 전에 난 예외도 가리도록, 아직 매칭 전이면 URI만으로 라우트를 찾는다 (메서드 무관)
+        $route = $request->route();
+        if (! $route instanceof \Illuminate\Routing\Route) {
+            $route = null;
+            foreach (app('router')->getRoutes()->getRoutes() as $candidate) {
+                if ($candidate->matches($request, false)) {
+                    $route = $candidate;
+                    break;
+                }
+            }
+        }
+
+        $sensitive = $route ? preg_grep(self::SENSITIVE_KEY, $route->parameterNames()) : [];
+        if ($sensitive && $route->getCompiled()) {
+            // 라우트 매칭과 같은 기준(디코드한 경로)으로 각 파라미터 위치를 찾아 그 자리만 바꾼다
+            $decoded = rawurldecode(rtrim($path, '/') ?: '/');
+            if (preg_match($route->getCompiled()->getRegex(), $decoded, $m, PREG_OFFSET_CAPTURE)) {
+                $spots = [];
+                foreach ($sensitive as $name) {
+                    if (isset($m[$name]) && $m[$name][1] >= 0 && $m[$name][0] !== '') {
+                        $spots[$m[$name][1]] = strlen($m[$name][0]);
+                    }
+                }
+                krsort($spots);   // 뒤에서부터 바꿔야 앞쪽 위치가 어긋나지 않는다
+                foreach ($spots as $offset => $length) {
+                    $decoded = substr_replace($decoded, self::MASK, $offset, $length);
+                }
+                $path = $decoded;
+            }
+        }
+
+        $query = [];
+        $raw = (string) $request->server->get('QUERY_STRING', '');
+        foreach ($raw === '' ? [] : explode('&', $raw) as $pair) {
+            [$key, $value] = array_pad(explode('=', $pair, 2), 2, null);
+            $query[] = $value !== null && preg_match(self::SENSITIVE_KEY, urldecode($key)) ? $key.'='.self::MASK : $pair;
+        }
+
+        return $request->getSchemeAndHttpHost().$request->getBaseUrl().$path.($query ? '?'.implode('&', $query) : '');
+    }
+
     /** 비밀번호 · 토큰 · 결제 정보는 가리고, 값은 짧게 자른다 */
     private static function scrub(array $data, int $depth = 0): array
     {
         $out = [];
         foreach (array_slice($data, 0, 50, true) as $k => $v) {
-            if (preg_match('/pass|token|secret|card|cvc|cvv|api_?key|authorization|account_?no/i', (string) $k)) {
+            if (preg_match(self::SENSITIVE_KEY, (string) $k)) {
                 $out[$k] = '[숨김]';
             } elseif ($v instanceof UploadedFile) {
                 $out[$k] = '[파일] '.$v->getClientOriginalName();
