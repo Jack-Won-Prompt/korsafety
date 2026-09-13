@@ -22,4 +22,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // 보고 대상 예외(검증 · 인증 · 404 등 제외)를 error_logs 테이블에도 기록 — 기본 파일 로그는 그대로 유지
+        $exceptions->report(function (\Throwable $e) {
+            \App\Models\ErrorLog::capture($e);
+        });
     })->create();
