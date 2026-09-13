@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\OrderController as AdminOrder;
 use App\Http\Controllers\Admin\OrderStatementController as AdminStatement;
 use App\Http\Controllers\Admin\TaxInvoiceController as AdminTaxInvoice;
 use App\Http\Controllers\Admin\VisitLogController as AdminVisitLog;
+use App\Http\Controllers\Admin\ErrorLogController as AdminErrorLog;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\InquiryController;
@@ -117,6 +118,15 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
 
     Route::get('visits', [AdminVisitLog::class, 'index'])->name('admin.visits');
     Route::post('visits/purge', [AdminVisitLog::class, 'purge'])->name('admin.visits.purge');
+
+    // 서버 에러 관리
+    Route::get('errors', [AdminErrorLog::class, 'index'])->name('admin.errors');
+    Route::post('errors/bulk', [AdminErrorLog::class, 'bulk'])->name('admin.errors.bulk');
+    Route::post('errors/purge', [AdminErrorLog::class, 'purge'])->name('admin.errors.purge');
+    Route::get('errors/{errorLog}', [AdminErrorLog::class, 'show'])->name('admin.errors.show');
+    Route::post('errors/{errorLog}/resolve', [AdminErrorLog::class, 'resolve'])->name('admin.errors.resolve');
+    Route::post('errors/{errorLog}/reopen', [AdminErrorLog::class, 'reopen'])->name('admin.errors.reopen');
+    Route::delete('errors/{errorLog}', [AdminErrorLog::class, 'destroy'])->name('admin.errors.destroy');
     Route::get('settings', [AdminController::class, 'settings'])->name('admin.settings');
     Route::post('settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
 
