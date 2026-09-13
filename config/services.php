@@ -52,4 +52,13 @@ return [
         'credentials' => env('FCM_CREDENTIALS', storage_path('app/firebase/service-account.json')),
     ],
 
+    /*
+     | SupportWorks — 운영 예외 보고 (App\Support\SupportWorksReporter).
+     | 값은 .env 에서만 읽는다. 미설정이면 보고는 조용히 건너뛴다.
+     */
+    'supportworks' => [
+        'error_url'   => env('SW_ERROR_URL'),
+        'error_token' => env('SW_ERROR_TOKEN'),
+    ],
+
 ];

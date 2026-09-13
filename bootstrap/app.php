@@ -27,4 +27,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->report(function (\Throwable $e) {
             \App\Models\ErrorLog::capture($e);
         });
+
+        // SupportWorks 로도 보낸다 — 응답 뒤에 · 2초 제한 · 실패해도 예외를 내보내지 않음
+        $exceptions->report(function (\Throwable $e) {
+            \App\Support\SupportWorksReporter::report($e, request());
+        });
     })->create();
