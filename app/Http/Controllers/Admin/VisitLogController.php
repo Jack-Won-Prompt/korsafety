@@ -51,12 +51,7 @@ class VisitLogController extends Controller
             'today_ips' => $today()->distinct('ip_address')->count('ip_address'),
         ];
 
-        // 인기 검색어 / 많이 본 상품
-        $topKeywords = (clone $ranged())->where('type', 'search')
-            ->selectRaw('keyword, COUNT(*) c, MIN(result_count) min_result')
-            ->whereNotNull('keyword')->groupBy('keyword')
-            ->orderByDesc('c')->limit(12)->get();
-
+        // 많이 본 상품
         $topProducts = (clone $ranged())->where('type', 'product')
             ->selectRaw('product_id, MAX(product_name) product_name, COUNT(*) c, COUNT(DISTINCT session_id) uniq')
             ->whereNotNull('product_id')->groupBy('product_id')
@@ -67,7 +62,7 @@ class VisitLogController extends Controller
             ->selectRaw('DATE(created_at) d, SUM(type = "search") s, SUM(type = "product") p')
             ->groupBy('d')->orderBy('d')->get()->take(-14);
 
-        return view('admin.visits.index', compact('logs', 'stats', 'topKeywords', 'topProducts', 'daily', 'type', 'q', 'ip', 'from', 'to'));
+        return view('admin.visits.index', compact('logs', 'stats', 'topProducts', 'daily', 'type', 'q', 'ip', 'from', 'to'));
     }
 
     /** 오래된 이력 삭제 (기본 90일 이전) */

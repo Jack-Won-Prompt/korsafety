@@ -73,49 +73,26 @@
 </div>
 @endif
 
-<div class="grid-2">
-    {{-- 인기 검색어 --}}
-    <div class="panel">
-        <div class="panel-h"><div><h2>인기 검색어</h2><div class="sub">기간 내 상위 12건</div></div></div>
-        <table class="table">
-            <thead><tr><th style="width:44px">순위</th><th>검색어</th><th style="width:80px">검색 수</th><th style="width:90px">결과</th><th style="width:70px">상품</th></tr></thead>
-            <tbody>
-            @forelse($topKeywords as $i => $k)
-                <tr>
-                    <td class="t-sub">{{ $i + 1 }}</td>
-                    <td class="t-name">{{ $k->keyword }}</td>
-                    <td>{{ number_format($k->c) }}회</td>
-                    <td>@if((int) $k->min_result === 0)<span class="badge off">0건 있음</span>@else<span class="t-sub">있음</span>@endif</td>
-                    <td><a class="btn btn-sm" href="{{ route('search', ['q' => $k->keyword]) }}" target="_blank">보기</a></td>
-                </tr>
-            @empty
-                <tr><td colspan="5" class="empty">기간 내 검색 기록이 없습니다.</td></tr>
-            @endforelse
-            </tbody>
-        </table>
-    </div>
-
-    {{-- 많이 본 상품 --}}
-    <div class="panel">
-        <div class="panel-h"><div><h2>많이 본 상품</h2><div class="sub">기간 내 상위 12건</div></div></div>
-        <table class="table">
-            <thead><tr><th style="width:44px">순위</th><th>상품</th><th style="width:70px">조회</th><th style="width:70px">방문자</th></tr></thead>
-            <tbody>
-            @forelse($topProducts as $i => $p)
-                <tr>
-                    <td class="t-sub">{{ $i + 1 }}</td>
-                    <td>
-                        <a class="t-name" href="{{ route('product.show', $p->product_id) }}" target="_blank">{{ \Illuminate\Support\Str::limit($p->product_name, 32) }}</a>
-                    </td>
-                    <td>{{ number_format($p->c) }}회</td>
-                    <td class="t-sub">{{ number_format($p->uniq) }}명</td>
-                </tr>
-            @empty
-                <tr><td colspan="4" class="empty">기간 내 상품 진입 기록이 없습니다.</td></tr>
-            @endforelse
-            </tbody>
-        </table>
-    </div>
+{{-- 많이 본 상품 --}}
+<div class="panel">
+    <div class="panel-h"><div><h2>많이 본 상품</h2><div class="sub">기간 내 상위 12건</div></div></div>
+    <table class="table">
+        <thead><tr><th style="width:44px">순위</th><th>상품</th><th style="width:90px">조회</th><th style="width:90px">방문자</th></tr></thead>
+        <tbody>
+        @forelse($topProducts as $i => $p)
+            <tr>
+                <td class="t-sub">{{ $i + 1 }}</td>
+                <td>
+                    <a class="t-name" href="{{ route('product.show', $p->product_id) }}" target="_blank">{{ \Illuminate\Support\Str::limit($p->product_name, 80) }}</a>
+                </td>
+                <td>{{ number_format($p->c) }}회</td>
+                <td class="t-sub">{{ number_format($p->uniq) }}명</td>
+            </tr>
+        @empty
+            <tr><td colspan="4" class="empty">기간 내 상품 진입 기록이 없습니다.</td></tr>
+        @endforelse
+        </tbody>
+    </table>
 </div>
 
 {{-- 원본 로그 --}}
