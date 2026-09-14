@@ -118,36 +118,6 @@
     </div>
 </div>
 
-{{-- IP별 방문 --}}
-<div class="panel">
-    <div class="panel-h"><div><h2>IP별 방문</h2><div class="sub">기간 내 상위 12개 · IP를 누르면 해당 IP의 이력만 봅니다</div></div></div>
-    <table class="table">
-        <thead><tr>
-            <th style="width:44px">순위</th><th style="width:180px">IP 주소</th>
-            <th style="width:90px">총 요청</th><th style="width:90px">검색</th><th style="width:90px">상품 진입</th>
-            <th style="width:90px">세션</th><th>마지막 방문</th><th style="width:80px">보기</th>
-        </tr></thead>
-        <tbody>
-        @forelse($topIps as $i => $row)
-            <tr>
-                <td class="t-sub">{{ $i + 1 }}</td>
-                <td class="t-name">{{ $row->ip_address }}</td>
-                <td>{{ number_format($row->c) }}회</td>
-                <td class="t-sub">{{ number_format($row->s) }}회</td>
-                <td class="t-sub">{{ number_format($row->p) }}회</td>
-                <td class="t-sub">{{ number_format($row->sessions) }}개</td>
-                <td class="t-sub">{{ \Illuminate\Support\Carbon::parse($row->last_at)->format('Y.m.d H:i') }}</td>
-                <td>
-                    <a class="btn btn-sm" href="{{ route('admin.visits', array_merge(request()->query(), ['ip' => $row->ip_address, 'page' => null])) }}">이력</a>
-                </td>
-            </tr>
-        @empty
-            <tr><td colspan="8" class="empty">기간 내 방문 기록이 없습니다.</td></tr>
-        @endforelse
-        </tbody>
-    </table>
-</div>
-
 {{-- 원본 로그 --}}
 <div class="panel">
     <div class="panel-h">
