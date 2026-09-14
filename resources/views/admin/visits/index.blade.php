@@ -9,16 +9,11 @@
 @endphp
 
 {{-- 요약 --}}
-<div class="tiles">
+<div class="tiles c3">
     <div class="tile">
         <div class="lab">방문자 (기간)</div>
         <div class="val">{{ number_format($stats['visitors']) }}<span class="won"> 명</span></div>
         <div class="sub">오늘 {{ number_format($stats['today_visitors']) }}명</div>
-    </div>
-    <div class="tile">
-        <div class="lab">제품 검색</div>
-        <div class="val">{{ number_format($stats['searches']) }}<span class="won"> 회</span></div>
-        <div class="sub">오늘 {{ number_format($stats['today_searches']) }}회</div>
     </div>
     <div class="tile">
         <div class="lab">상품 진입</div>

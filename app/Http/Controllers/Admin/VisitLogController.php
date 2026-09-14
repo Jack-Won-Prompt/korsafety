@@ -40,10 +40,8 @@ class VisitLogController extends Controller
         // 요약 (기간 기준 + 오늘)
         $today = fn () => VisitLog::whereDate('created_at', today());
         $stats = [
-            'searches' => (clone $ranged())->where('type', 'search')->count(),
             'products' => (clone $ranged())->where('type', 'product')->count(),
             'visitors' => (clone $ranged())->distinct('session_id')->count('session_id'),
-            'today_searches' => $today()->where('type', 'search')->count(),
             'today_products' => $today()->where('type', 'product')->count(),
             'today_visitors' => $today()->distinct('session_id')->count('session_id'),
             'no_result' => (clone $ranged())->where('type', 'search')->where('result_count', 0)->count(),
