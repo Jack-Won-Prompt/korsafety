@@ -48,4 +48,18 @@ class SitemapController extends Controller
             ->view('sitemap', ['urls' => $urls])
             ->header('Content-Type', 'application/xml; charset=UTF-8');
     }
+
+    /** 네이버 서치어드바이저 RSS 제출용 — 최근 등록 상품 100건 */
+    public function rss()
+    {
+        $items = Product::visible()
+            ->whereNotNull('main_image')->where('main_image', '!=', '')
+            ->with('category')
+            ->orderByDesc('id')
+            ->limit(100)->get();
+
+        return response()
+            ->view('rss', ['items' => $items])
+            ->header('Content-Type', 'application/rss+xml; charset=UTF-8');
+    }
 }
