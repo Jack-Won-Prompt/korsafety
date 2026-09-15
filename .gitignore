@@ -44,3 +44,4 @@ Thumbs.db
 /google-ads
 # SSL 인증서 도메인 검증 파일. 서버마다 다르고 발급 때 생긴다 — 지우면 갱신이 막힌다.
 /public/.well-known/
+/report
