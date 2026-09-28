@@ -253,4 +253,28 @@
 })();
 </script>
 @endif
+
+<script>
+(function(){
+    // 예전에 올린 상세 이미지들은 폭이 제각각이라(493~848px) 860px 본문 안에서
+    // 들쭉날쭉하게 보인다. 본문 폭을 채워도 될 만큼 큰 것만 꽉 채워 통일한다.
+    // 아이콘·배지처럼 원래 작은 이미지는 억지로 늘리면 뭉개지므로 그대로 둔다.
+    var MIN_FILL_WIDTH = 400;
+
+    var imgs = document.querySelectorAll('.pd-desc img, .pd-detail-imgs img');
+    if(!imgs.length) return;
+
+    function mark(img){
+        // 관리자가 에디터에서 직접 크기를 지정한 이미지는 그 의도를 존중해 그대로 둔다
+        if(img.hasAttribute('width') || (img.style && img.style.width)) return;
+        if(img.naturalWidth >= MIN_FILL_WIDTH) img.classList.add('is-fill');
+    }
+
+    Array.prototype.forEach.call(imgs, function(img){
+        // 캐시된 이미지는 load 이벤트가 이미 지나갔으므로 즉시 판정한다
+        if(img.complete && img.naturalWidth) mark(img);
+        else img.addEventListener('load', function(){ mark(img); }, { once: true });
+    });
+})();
+</script>
 @endsection
