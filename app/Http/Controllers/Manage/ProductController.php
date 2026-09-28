@@ -9,11 +9,15 @@ use App\Models\ProductImage;
 use App\Support\RichTextSanitizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
+    /** 상세 설명 에디터 업로드로 허용하는 확장자 */
+    private const EDITOR_IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif'];
+
     private function sellerId(): int
     {
         return Auth::user()->seller_id;
@@ -251,18 +255,64 @@ class ProductController extends Controller
     /**
      * 상세 설명 리치 에디터의 이미지 업로드 (붙여넣기 · 툴바).
      * 스토어별 업로드 폴더에 저장하고 공개 URL을 돌려준다.
+     * 어떤 경우에도 JSON으로 응답한다 — 에디터는 fetch로 호출하므로 HTML이 오면 파싱에 실패한다.
      */
     public function uploadImage(Request $request)
     {
-        $request->validate(['image' => 'required|image|mimes:jpg,jpeg,png,webp,gif|max:8192'], [], ['image' => '이미지']);
+        // post_max_size 초과 등으로 파일 자체가 도착하지 않는 경우를 먼저 구분한다
+        if (! $request->hasFile('image')) {
+            return response()->json([
+                'message' => '이미지가 전송되지 않았습니다. 파일 용량이 서버 허용치를 넘었을 수 있습니다.',
+            ], 422);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'image' => [
+                'required',
+                'image',
+                'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/bmp,image/x-ms-bmp,image/avif',
+                'max:8192',
+            ],
+        ], [
+            'image.required' => '이미지를 선택해 주세요.',
+            'image.image' => '이미지 파일만 올릴 수 있습니다.',
+            'image.mimetypes' => 'JPG · PNG · GIF · WEBP · BMP 형식만 올릴 수 있습니다.',
+            'image.max' => '이미지 용량은 8MB 이하여야 합니다.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->errors()->first('image')], 422);
+        }
 
         $dir = public_path('shop/uploads/'.$this->sellerId().'/editor');
-        if (! is_dir($dir)) {
-            @mkdir($dir, 0775, true);
+        if (! is_dir($dir) && ! @mkdir($dir, 0775, true) && ! is_dir($dir)) {
+            return response()->json(['message' => '업로드 폴더를 만들 수 없습니다. 관리자에게 문의해 주세요.'], 500);
         }
+
         $file = $request->file('image');
-        $name = date('Ymd_His').'_'.Str::lower(Str::random(6)).'.'.strtolower($file->getClientOriginalExtension());
-        $file->move($dir, $name);
+
+        // 붙여넣기한 이미지는 파일명·확장자가 없을 수 있다(확장자가 빈 문자열이면
+        // 저장 파일명이 점으로 끝나 Windows에서 move가 실패한다) → MIME으로 확장자를 정한다
+        $ext = strtolower((string) $file->getClientOriginalExtension());
+        if (! in_array($ext, self::EDITOR_IMAGE_EXTS, true)) {
+            $ext = strtolower((string) $file->guessExtension());
+        }
+        if (! in_array($ext, self::EDITOR_IMAGE_EXTS, true)) {
+            $ext = 'png';
+        }
+        if ($ext === 'jpeg') {
+            $ext = 'jpg';
+        }
+
+        $name = date('Ymd_His').'_'.Str::lower(Str::random(6)).'.'.$ext;
+
+        try {
+            $file->move($dir, $name);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json(['message' => '이미지를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.'], 500);
+        }
 
         return response()->json(['url' => asset('shop/uploads/'.$this->sellerId().'/editor/'.$name)]);
     }

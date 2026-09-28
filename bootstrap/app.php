@@ -19,8 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // api/* 는 물론, JSON을 기대하는 AJAX 요청(fetch 업로드 등)에도 JSON으로 응답한다.
+        // 이게 빠지면 검증 실패가 302 리다이렉트로 나가고, fetch는 그 뒤 HTML 페이지를
+        // 받아 "Unexpected token '<'" JSON 파싱 오류만 보이게 된다.
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
 
         // 보고 대상 예외(검증 · 인증 · 404 등 제외)를 error_logs 테이블에도 기록 — 기본 파일 로그는 그대로 유지
