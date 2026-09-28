@@ -306,6 +306,10 @@
     .rte .ql-editor{min-height:240px;max-height:520px;overflow-y:auto;padding:14px;font-size:14px;line-height:1.75;color:var(--ink)}
     .rte .ql-editor.ql-blank::before{color:#9aa0aa;font-style:normal}
     .rte .ql-editor img{max-width:100%;height:auto}
+    /* 이미지 업로드 진행 표시 */
+    .rte{position:relative}
+    .rte.uploading::after{content:'이미지 업로드 중…';position:absolute;right:10px;bottom:8px;
+        background:rgba(17,24,39,.82);color:#fff;font-size:12px;padding:4px 10px;border-radius:999px;pointer-events:none}
 </style>
 @endpush
 
@@ -480,23 +484,114 @@
 
     quill.on('selection-change', function(r){ wrapEl.classList.toggle('focused', !!r); });
 
-    function upload(file){
-        if(!file) return;
+    var MAX_BYTES = 8 * 1024 * 1024;                 // 서버 허용 용량(8MB)과 동일
+    var MAX_EDGE  = 2000;                            // 다시 인코딩할 때 최대 변 길이
+    var OK_TYPES  = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+    function extOf(type){
+        return ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp' })[type] || 'png';
+    }
+
+    // 붙여넣기한 blob은 파일명이 없을 수 있다 — 확장자 있는 이름을 붙여 준다
+    function named(blob){
+        var ext = extOf(blob.type);
+        if(blob.name && blob.name.indexOf('.') > 0) return blob;
+        try { return new File([blob], 'paste.' + ext, { type: blob.type }); }
+        catch(e){ blob.uploadName = 'paste.' + ext; return blob; }
+    }
+
+    // 서버가 받지 못하는 형식(BMP 등)이거나 용량이 큰 이미지는 캔버스로 다시 인코딩
+    function reencode(blob){
+        return new Promise(function(resolve, reject){
+            var url = URL.createObjectURL(blob);
+            var img = new Image();
+            img.onload = function(){
+                URL.revokeObjectURL(url);
+                var scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
+                var cv = document.createElement('canvas');
+                cv.width  = Math.max(1, Math.round(img.width  * scale));
+                cv.height = Math.max(1, Math.round(img.height * scale));
+                var ctx = cv.getContext('2d');
+                ctx.drawImage(img, 0, 0, cv.width, cv.height);
+
+                cv.toBlob(function(png){
+                    if(png && png.size <= MAX_BYTES) return resolve(named(png));
+                    // PNG가 여전히 크면 흰 배경 위에 얹어 JPEG으로 (투명도는 흰색 처리)
+                    ctx.globalCompositeOperation = 'destination-over';
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(0, 0, cv.width, cv.height);
+                    cv.toBlob(function(jpg){
+                        if(jpg && jpg.size <= MAX_BYTES) return resolve(named(jpg));
+                        reject(new Error('이미지 용량이 너무 큽니다. 크기를 줄여 다시 붙여넣어 주세요.'));
+                    }, 'image/jpeg', 0.88);
+                }, 'image/png');
+            };
+            img.onerror = function(){
+                URL.revokeObjectURL(url);
+                reject(new Error('이미지를 읽을 수 없습니다. 다른 형식으로 저장해 올려 주세요.'));
+            };
+            img.src = url;
+        });
+    }
+
+    function prepare(file){
+        var type = (file.type || '').toLowerCase();
+        if(OK_TYPES.indexOf(type) > -1 && file.size <= MAX_BYTES){
+            // GIF는 다시 인코딩하면 애니메이션이 사라지므로 그대로 보낸다
+            return Promise.resolve(named(file));
+        }
+        if(type === 'image/gif'){
+            return Promise.reject(new Error('GIF 용량은 8MB 이하여야 합니다.'));
+        }
+        return reencode(file);
+    }
+
+    function failMessage(res){
+        if(res.status === 419 || res.status === 401) return '로그인 세션이 만료되었습니다. 작성 중인 내용을 복사해 둔 뒤 새로 고침하고 다시 시도해 주세요.';
+        if(res.status === 413) return '이미지 용량이 서버 허용치를 넘었습니다.';
+        if(res.data && res.data.message) return res.data.message;
+        if(res.html) return '서버에서 오류가 발생했습니다. 새로 고침 후 다시 시도해 주세요. (HTTP ' + res.status + ')';
+        return '서버 오류가 발생했습니다. (HTTP ' + res.status + ')';
+    }
+
+    function send(file){
         var fd = new FormData();
-        fd.append('image', file);
-        fetch(UPLOAD_URL, {
+        fd.append('image', file, file.name || file.uploadName || 'paste.png');
+        return fetch(UPLOAD_URL, {
             method: 'POST',
-            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             credentials: 'same-origin',
             body: fd,
-        }).then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); })
-          .then(function(d){
-              if(!d.url) return;
+        }).then(function(r){
+            return r.text().then(function(text){
+                var data = null;
+                try { data = JSON.parse(text); } catch(e){ /* HTML 오류 페이지 */ }
+                return { ok: r.ok, status: r.status, data: data, html: !data };
+            });
+        });
+    }
+
+    var busy = 0;
+    function setBusy(on){
+        busy += on ? 1 : -1;
+        wrapEl.classList.toggle('uploading', busy > 0);
+    }
+
+    function upload(file){
+        if(!file) return;
+        setBusy(true);
+        prepare(file)
+          .then(send)
+          .then(function(res){
+              if(!res.ok || !res.data || !res.data.url) throw new Error(failMessage(res));
               var range = quill.getSelection(true) || { index: quill.getLength() };
-              quill.insertEmbed(range.index, 'image', d.url);
+              quill.insertEmbed(range.index, 'image', res.data.url);
               quill.setSelection(range.index + 1);
           })
-          .catch(function(err){ alert('이미지 업로드에 실패했습니다. (' + err + ')'); });
+          .catch(function(err){
+              alert('이미지 업로드에 실패했습니다.\n' + (err && err.message ? err.message : err));
+          })
+          .then(function(){ setBusy(false); });
     }
 
     quill.getModule('toolbar').addHandler('image', function(){
@@ -508,11 +603,21 @@
 
     // 붙여넣기 · 드래그 앤 드롭으로 이미지 첨부
     quill.root.addEventListener('paste', function(e){
-        var item = Array.prototype.slice.call((e.clipboardData || {}).items || [])
-            .filter(function(x){ return x.type.indexOf('image/') === 0; })[0];
-        if(!item) return;
+        var dt = e.clipboardData;
+        if(!dt) return;
+
+        // 1순위: files (Explorer에서 복사한 이미지 파일), 2순위: items (화면 캡처 등 클립보드 비트맵)
+        var file = Array.prototype.slice.call(dt.files || [])
+            .filter(function(f){ return (f.type || '').indexOf('image/') === 0; })[0];
+        if(!file){
+            var item = Array.prototype.slice.call(dt.items || [])
+                .filter(function(x){ return x.kind === 'file' && (x.type || '').indexOf('image/') === 0; })[0];
+            if(item) file = item.getAsFile();
+        }
+        if(!file) return;
         e.preventDefault();
-        upload(item.getAsFile());
+        e.stopPropagation();
+        upload(file);
     });
     quill.root.addEventListener('drop', function(e){
         var file = Array.prototype.slice.call((e.dataTransfer || {}).files || [])
