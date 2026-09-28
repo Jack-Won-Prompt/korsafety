@@ -484,9 +484,14 @@
 
     quill.on('selection-change', function(r){ wrapEl.classList.toggle('focused', !!r); });
 
-    var MAX_BYTES = 8 * 1024 * 1024;                 // 서버 허용 용량(8MB)과 동일
-    var MAX_EDGE  = 2000;                            // 다시 인코딩할 때 최대 변 길이
-    var OK_TYPES  = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    var MAX_BYTES  = 8 * 1024 * 1024;                // 서버 허용 용량(8MB)과 동일
+    // 상세 이미지는 세로로 아주 긴 경우가 많다(예: 860 × 17000).
+    // 긴 변을 기준으로 줄이면 가로가 100px 아래로 찌그러지므로 '가로 폭'을 기준으로 맞춘다.
+    var MAX_WIDTH  = 1600;                           // 쇼핑몰 상세 폭(860px) 대비 여유 있는 최대 가로
+    var MAX_HEIGHT = 20000;                          // 세로가 비정상적으로 긴 이미지의 안전 한계
+    var MAX_AREA   = 40000000;                       // 브라우저 캔버스 한계에 대한 여유 (4천만 픽셀)
+    var JPEG_Q     = [0.88, 0.75, 0.6];              // PNG가 용량을 넘을 때 낮춰 가며 시도할 화질
+    var OK_TYPES   = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
     function extOf(type){
         return ({ 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp' })[type] || 'png';
@@ -500,31 +505,54 @@
         catch(e){ blob.uploadName = 'paste.' + ext; return blob; }
     }
 
-    // 서버가 받지 못하는 형식(BMP 등)이거나 용량이 큰 이미지는 캔버스로 다시 인코딩
+    // 원본을 어느 배율까지 줄여야 하는지 — 가로 폭이 기준이고, 나머지는 안전장치다.
+    // 가로가 MAX_WIDTH 이하인 세로로 긴 상세 이미지는 배율 1(원본 그대로)이 된다.
+    function fitScale(w, h){
+        return Math.min(1, MAX_WIDTH / w, MAX_HEIGHT / h, Math.sqrt(MAX_AREA / (w * h)));
+    }
+
+    // 주어진 배율로 한 번 인코딩해 본다 — 용량을 못 맞추면 null로 resolve
+    function encodeAt(img, scale){
+        return new Promise(function(resolve, reject){
+            var cv = document.createElement('canvas');
+            cv.width  = Math.max(1, Math.round(img.width  * scale));
+            cv.height = Math.max(1, Math.round(img.height * scale));
+            var ctx = cv.getContext('2d');
+            if(!ctx) return reject(new Error('이미지를 변환할 수 없습니다. 다른 형식으로 저장해 올려 주세요.'));
+            ctx.drawImage(img, 0, 0, cv.width, cv.height);
+
+            cv.toBlob(function(png){
+                if(png && png.size <= MAX_BYTES) return resolve(named(png));
+                // PNG가 용량을 넘으면 흰 배경 위에 얹어 JPEG으로 (투명도는 흰색 처리)
+                ctx.globalCompositeOperation = 'destination-over';
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, cv.width, cv.height);
+                (function tryQuality(i){
+                    if(i >= JPEG_Q.length) return resolve(null);   // 이 배율로는 용량을 못 맞춘다
+                    cv.toBlob(function(jpg){
+                        if(jpg && jpg.size <= MAX_BYTES) return resolve(named(jpg));
+                        tryQuality(i + 1);
+                    }, 'image/jpeg', JPEG_Q[i]);
+                })(0);
+            }, 'image/png');
+        });
+    }
+
+    // 서버가 받지 못하는 형식(BMP 등)이거나 용량이 큰 이미지는 캔버스로 다시 인코딩.
+    // 화질을 먼저 낮추고, 그래도 용량을 못 맞추면 배율을 단계적으로 줄인다.
     function reencode(blob){
         return new Promise(function(resolve, reject){
             var url = URL.createObjectURL(blob);
             var img = new Image();
             img.onload = function(){
                 URL.revokeObjectURL(url);
-                var scale = Math.min(1, MAX_EDGE / Math.max(img.width, img.height));
-                var cv = document.createElement('canvas');
-                cv.width  = Math.max(1, Math.round(img.width  * scale));
-                cv.height = Math.max(1, Math.round(img.height * scale));
-                var ctx = cv.getContext('2d');
-                ctx.drawImage(img, 0, 0, cv.width, cv.height);
-
-                cv.toBlob(function(png){
-                    if(png && png.size <= MAX_BYTES) return resolve(named(png));
-                    // PNG가 여전히 크면 흰 배경 위에 얹어 JPEG으로 (투명도는 흰색 처리)
-                    ctx.globalCompositeOperation = 'destination-over';
-                    ctx.fillStyle = '#fff';
-                    ctx.fillRect(0, 0, cv.width, cv.height);
-                    cv.toBlob(function(jpg){
-                        if(jpg && jpg.size <= MAX_BYTES) return resolve(named(jpg));
-                        reject(new Error('이미지 용량이 너무 큽니다. 크기를 줄여 다시 붙여넣어 주세요.'));
-                    }, 'image/jpeg', 0.88);
-                }, 'image/png');
+                (function attempt(scale, left){
+                    encodeAt(img, scale).then(function(out){
+                        if(out) return resolve(out);
+                        if(left <= 0) return reject(new Error('이미지 용량이 너무 큽니다. 크기를 줄여 다시 올려 주세요.'));
+                        attempt(scale * 0.8, left - 1);
+                    }, reject);
+                })(fitScale(img.width, img.height), 5);
             };
             img.onerror = function(){
                 URL.revokeObjectURL(url);
