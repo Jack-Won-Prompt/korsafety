@@ -3,12 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
+    /** 삭제한 상품은 휴지통에 남겨 되살릴 수 있게 한다 */
+    use SoftDeletes;
+
     protected $fillable = [
         'external_no', 'seller_id', 'category_id', 'name', 'slug', 'sku', 'product_code', 'brand',
         'price', 'cost_price', 'sale_price', 'stock', 'safety_stock', 'track_stock',

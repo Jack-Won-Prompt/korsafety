@@ -222,6 +222,10 @@ Route::prefix('manage/categories')->middleware('role:hq_admin')->group(function 
 Route::prefix('manage')->middleware('role:hq_admin,seller')->group(function () {
     Route::get('products', [ManageProduct::class, 'index'])->name('manage.products.index');
     Route::post('products/bulk', [ManageProduct::class, 'bulk'])->name('manage.products.bulk');
+    Route::get('products/trash', [ManageProduct::class, 'trash'])->name('manage.products.trash');
+    Route::post('products/{id}/restore', [ManageProduct::class, 'restore'])->whereNumber('id')->name('manage.products.restore');
+    Route::delete('products/{id}/force', [ManageProduct::class, 'forceDestroy'])->whereNumber('id')->name('manage.products.force-delete');
+    Route::post('products/{product:id}/duplicate', [ManageProduct::class, 'duplicate'])->name('manage.products.duplicate');
     Route::post('products/quick-save', [ManageProduct::class, 'quickSave'])->name('manage.products.quicksave');
     Route::post('products/upload-image', [ManageProduct::class, 'uploadImage'])->name('manage.products.upload-image');
     Route::get('products/export', [ManageProduct::class, 'exportCsv'])->name('manage.products.export');

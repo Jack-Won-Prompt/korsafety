@@ -6,6 +6,7 @@
     @if(auth()->user()->isHqAdmin())
         <a href="{{ route('manage.categories.index') }}" class="btn btn-sm">카테고리 관리</a>
     @endif
+    <a href="{{ route('manage.products.trash') }}" class="btn btn-sm">🗑 삭제한 상품</a>
     <a href="{{ route('manage.products.export') }}" class="btn btn-sm">⭳ 엑셀 다운로드</a>
     <button type="button" class="btn btn-sm" onclick="var b=document.getElementById('imp-box');b.hidden=!b.hidden">⭱ 엑셀 업로드</button>
     <a href="{{ route('manage.products.create') }}" class="btn btn-accent btn-sm">+ 상품 등록</a>
@@ -82,6 +83,11 @@
                     <option value="{{ $k }}" @selected($sort === $k)>{{ $v }}</option>
                 @endforeach
             </select>
+            <select class="input" style="height:38px;flex:0 0 104px" name="per_page" title="한 번에 볼 개수">
+                @foreach(\App\Http\Controllers\Manage\ProductController::PER_PAGES as $n)
+                    <option value="{{ $n }}" @selected($perPage === $n)>{{ $n }}개씩</option>
+                @endforeach
+            </select>
             <button class="btn btn-sm btn-accent" style="flex:0 0 auto">검색</button>
             <a href="{{ route('manage.products.index') }}" class="btn btn-sm" style="flex:0 0 auto">초기화</a>
         </form>
@@ -93,7 +99,9 @@
     @csrf
     <div class="panel">
         <div class="panel-h">
-            <div><h2>상품 목록</h2><div class="sub">총 {{ number_format($products->total()) }}개 · <span id="selCount">0</span>개 선택</div></div>
+            <div><h2>상품 목록</h2><div class="sub">총 {{ number_format($products->total()) }}개 · <span id="selCount">0</span>개 선택
+                @if(($stats['trashed'] ?? 0) > 0) · <a href="{{ route('manage.products.trash') }}">휴지통 {{ number_format($stats['trashed']) }}개</a>@endif
+            </div></div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
                 <select class="input" name="bulk_action" id="bulkAction" style="height:34px;width:126px;font-size:12.5px">
                     <option value="">일괄 작업…</option>
@@ -140,6 +148,7 @@
                         <div class="t-sub">
                             @if($p->product_code)<b class="pcode">{{ $p->product_code }}</b> · @endif{{ $p->sku ? "SKU ".$p->sku : "SKU 미지정" }}@if($p->brand) · {{ $p->brand }}@endif
                             @if($p->margin_percent !== null) · 마진 {{ $p->margin_percent }}%@endif
+                            @if(auth()->user()->isHqAdmin() && $p->seller && ! $p->seller->is_hq) · <span class="badge hq">{{ $p->seller->name }}</span>@endif
                         </div>
                     </td>
                     <td class="t-sub">{{ $p->category->name ?? '-' }}</td>
@@ -163,6 +172,9 @@
                         <div style="display:flex;gap:6px">
                             <a href="{{ route('manage.products.edit', $p) }}" class="btn btn-sm">수정</a>
                             <a href="{{ route('product.show', $p) }}" target="_blank" class="btn btn-sm" title="쇼핑몰에서 보기">↗</a>
+                            <button type="submit" class="btn btn-sm" title="이 상품 복사"
+                                    formaction="{{ route('manage.products.duplicate', $p) }}"
+                                    onclick="return confirm('이 상품을 복사할까요?\n복사본은 미노출 상태로 만들어집니다.')">복사</button>
                             @if($p->main_image)<a href="{{ route('manage.products.image', $p) }}" class="btn btn-sm" title="이미지 편집">✎</a>@endif
                         </div>
                     </td>

@@ -23,10 +23,18 @@ class ProductController extends Controller
         return Auth::user()->seller_id;
     }
 
-    /** 현재 스토어의 상품만 조회하도록 스코프 */
+    /** 본사 계정인가 — 본사는 판매점 상품까지 모두 관리한다 */
+    private function isHq(): bool
+    {
+        return (bool) optional(Auth::user())->isHqAdmin();
+    }
+
+    /** 조회 스코프 — 본사는 전체 스토어, 판매점은 자기 상품만 */
     private function scoped()
     {
-        return Product::where('seller_id', $this->sellerId());
+        $query = Product::query();
+
+        return $this->isHq() ? $query : $query->where('seller_id', $this->sellerId());
     }
 
     /** 정렬 옵션 (라벨 → orderBy 처리는 아래 match) */
@@ -40,6 +48,17 @@ class ProductController extends Controller
         'onsale' => '판매중', 'soldout' => '품절', 'hidden' => '미노출', 'noimage' => '이미지 없음', 'best' => '베스트 셀러',
     ];
 
+    /** 한 화면에 보여줄 상품 수 */
+    public const PER_PAGES = [20, 50, 100, 200];
+
+    /** 요청한 목록 개수 (허용값 밖이면 기본 20개) */
+    private function perPage(Request $request): int
+    {
+        $perPage = (int) $request->query('per_page', 20);
+
+        return in_array($perPage, self::PER_PAGES, true) ? $perPage : 20;
+    }
+
     public function index(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
@@ -48,7 +67,7 @@ class ProductController extends Controller
         $stock = $request->query('stock');
         $sort = $request->query('sort', 'latest');
 
-        $query = $this->scoped()->with('category');
+        $query = $this->scoped()->with(['category', 'seller']);
 
         if ($q !== '') {
             $query->where(function ($w) use ($q) {
@@ -91,7 +110,8 @@ class ProductController extends Controller
             default => $query->latest('id'),
         };
 
-        $products = $query->paginate(20)->withQueryString();
+        $perPage = $this->perPage($request);
+        $products = $query->paginate($perPage)->withQueryString();
 
         // 요약 타일 — 필터와 무관하게 스토어 전체 기준
         $base = fn () => $this->scoped();
@@ -103,6 +123,7 @@ class ProductController extends Controller
             'low' => $base()->lowStock()->count(),
             'out' => $base()->outOfStock()->count(),
             'tracked' => $base()->where('track_stock', true)->count(),
+            'trashed' => $base()->onlyTrashed()->count(),
         ];
 
         return view('manage.products.index', [
@@ -114,7 +135,51 @@ class ProductController extends Controller
             'state' => $state,
             'stock' => $stock,
             'sort' => $sort,
+            'perPage' => $perPage,
         ]);
+    }
+
+    /** 삭제한 상품 목록 (휴지통) — 복구하거나 완전히 지울 수 있다 */
+    public function trash(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        $query = $this->scoped()->onlyTrashed()->with('category');
+        if ($q !== '') {
+            $query->where(function ($w) use ($q) {
+                $w->where('name', 'like', "%$q%")
+                    ->orWhere('brand', 'like', "%$q%")
+                    ->orWhere('sku', 'like', "%$q%")
+                    ->orWhere('product_code', 'like', "%$q%");
+                if (preg_match('/^\d+$/', $q)) {
+                    $w->orWhere('id', (int) $q);
+                }
+            });
+        }
+
+        $perPage = $this->perPage($request);
+        $products = $query->orderByDesc('deleted_at')->paginate($perPage)->withQueryString();
+
+        return view('manage.products.trash', compact('products', 'q', 'perPage'));
+    }
+
+    /** 삭제한 상품을 되살린다 */
+    public function restore(int $id)
+    {
+        $product = $this->scoped()->onlyTrashed()->findOrFail($id);
+        $product->restore();
+
+        return back()->with('status', "'{$product->name}' 상품을 되살렸습니다. 쇼핑몰 노출 상태를 확인해 주세요.");
+    }
+
+    /** 휴지통에서 완전히 지운다 (되돌릴 수 없음) */
+    public function forceDestroy(int $id)
+    {
+        $product = $this->scoped()->onlyTrashed()->findOrFail($id);
+        $name = $product->name;
+        $product->forceDelete();
+
+        return back()->with('status', "'{$name}' 상품을 완전히 삭제했습니다.");
     }
 
     /** 선택 상품 일괄 처리 — 판매상태 · 노출 · 카테고리 이동 · 삭제 */
@@ -249,7 +314,39 @@ class ProductController extends Controller
     {
         $this->authorizeOwner($product);
         $product->delete();
-        return back()->with('status', '상품이 삭제되었습니다.');
+        return back()->with('status', '상품을 삭제했습니다. 휴지통에서 되살릴 수 있습니다.');
+    }
+
+    /** 상품 복사 — 카테고리·이미지·옵션까지 복제하고 미노출 상태로 만든다 */
+    public function duplicate(Product $product)
+    {
+        $this->authorizeOwner($product);
+        $product->load('images', 'options', 'categories');
+
+        $copy = $product->replicate(['external_no', 'sku', 'product_code', 'slug']);
+        $copy->name = mb_substr($product->name, 0, 240).' (복사)';
+        // slug 는 비워 둘 수 없다 — 이름 기준으로 새로 만들되 겹치지 않게 뒤에 임의 문자를 붙인다
+        $copy->slug = Str::limit(Str::slug($copy->name) ?: 'p', 112, '').'-'.Str::lower(Str::random(6));
+        $copy->is_active = false;
+        $copy->is_best = false;
+        $copy->best_sort = 0;
+        $copy->save();
+
+        $copy->categories()->sync($product->categories->pluck('id')->all());
+
+        foreach ($product->images as $image) {
+            $copy->images()->create(['path' => $image->path, 'type' => $image->type, 'sort' => $image->sort]);
+        }
+        foreach ($product->options as $option) {
+            $copy->options()->create([
+                'group_name' => $option->group_name, 'name' => $option->name,
+                'extra_price' => $option->extra_price, 'stock' => $option->stock,
+                'is_active' => $option->is_active, 'sort' => $option->sort,
+            ]);
+        }
+
+        return redirect()->route('manage.products.edit', $copy)
+            ->with('status', '상품을 복사했습니다. 내용을 고친 뒤 저장하세요. (복사본은 미노출 상태입니다)');
     }
 
     /**
@@ -492,7 +589,7 @@ class ProductController extends Controller
     // ---- helpers ----
     private function authorizeOwner(Product $product): void
     {
-        abort_unless($product->seller_id === $this->sellerId(), 403, '본인 스토어 상품만 관리할 수 있습니다.');
+        abort_unless($this->isHq() || $product->seller_id === $this->sellerId(), 403, '본인 스토어 상품만 관리할 수 있습니다.');
     }
 
     private function validated(Request $request, ?Product $product = null): array
