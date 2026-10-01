@@ -15,6 +15,14 @@
 @section('content')
 @php
     $filterUrl = fn(array $params) => route('manage.products.index', array_merge(request()->query(), $params));
+    $sortUrl = fn(string $key) => $filterUrl(['sort' => $key, 'page' => null]);
+    // 표 머리글 정렬 — ▼ 높은(많은)순 · ▲ 낮은(적은)순
+    $sortCol = function (string $label, string $descKey, string $ascKey, string $descTitle = '높은순', string $ascTitle = '낮은순') use ($sort, $sortUrl) {
+        $style = fn(bool $on) => 'text-decoration:none;font-size:11px;margin-left:2px;color:'.($on ? 'var(--accent)' : '#b0b5ba');
+        return $label
+            .'<a href="'.e($sortUrl($descKey)).'" title="'.e($descTitle).'" style="'.$style($sort === $descKey).'">▼</a>'
+            .'<a href="'.e($sortUrl($ascKey)).'" title="'.e($ascTitle).'" style="'.$style($sort === $ascKey).'">▲</a>';
+    };
 @endphp
 
 {{-- 요약 --}}
@@ -132,10 +140,10 @@
                 <th style="width:56px">이미지</th>
                 <th>상품명 / 코드 · SKU</th>
                 <th style="width:110px">카테고리</th>
-                <th style="width:112px">판매가</th>
-                <th style="width:112px">할인가</th>
-                <th style="width:96px">재고</th>
-                <th style="width:120px">상태</th>
+                <th style="width:112px">{!! $sortCol('판매가', 'price_desc', 'price_asc') !!}</th>
+                <th style="width:112px">{!! $sortCol('할인가', 'sale_desc', 'sale_asc') !!}</th>
+                <th style="width:96px">{!! $sortCol('재고', 'stock_desc', 'stock_asc', '많은순', '적은순') !!}</th>
+                <th style="width:120px">{!! $sortCol('상태', 'state_onsale', 'state_off', '판매중 먼저', '미판매중 먼저') !!}</th>
                 <th style="width:132px">관리</th>
             </tr></thead>
             <tbody>

@@ -40,7 +40,10 @@ class ProductController extends Controller
     /** 정렬 옵션 (라벨 → orderBy 처리는 아래 match) */
     public const SORTS = [
         'latest' => '최근 등록순', 'display' => '진열 순서', 'name' => '상품명순',
-        'price_desc' => '높은 가격순', 'price_asc' => '낮은 가격순', 'stock_asc' => '재고 적은순',
+        'price_desc' => '판매가 높은순', 'price_asc' => '판매가 낮은순',
+        'sale_desc' => '할인가 높은순', 'sale_asc' => '할인가 낮은순',
+        'stock_desc' => '재고 많은순', 'stock_asc' => '재고 적은순',
+        'state_onsale' => '판매중 먼저', 'state_off' => '미판매중 먼저',
     ];
 
     /** 판매 상태 필터 */
@@ -104,9 +107,16 @@ class ProductController extends Controller
         match ($sort) {
             'display' => $query->orderBy('sort')->orderByDesc('id'),
             'name' => $query->orderBy('name'),
-            'price_desc' => $query->orderByRaw('COALESCE(sale_price, price) desc'),
-            'price_asc' => $query->orderByRaw('COALESCE(sale_price, price) asc'),
-            'stock_asc' => $query->orderBy('stock'),
+            // 값이 비어 있는 상품은 어느 방향이든 뒤로 보낸다
+            'price_desc' => $query->orderByRaw('price is null, price desc')->orderByDesc('id'),
+            'price_asc' => $query->orderByRaw('price is null, price asc')->orderByDesc('id'),
+            'sale_desc' => $query->orderByRaw('sale_price is null, sale_price desc')->orderByDesc('id'),
+            'sale_asc' => $query->orderByRaw('sale_price is null, sale_price asc')->orderByDesc('id'),
+            'stock_desc' => $query->orderByDesc('stock')->orderByDesc('id'),
+            'stock_asc' => $query->orderBy('stock')->orderByDesc('id'),
+            // 판매중 = 쇼핑몰 노출 + 품절 아님
+            'state_onsale' => $query->orderByRaw('(is_active = 1 and is_soldout = 0) desc')->orderByDesc('id'),
+            'state_off' => $query->orderByRaw('(is_active = 1 and is_soldout = 0) asc')->orderByDesc('id'),
             default => $query->latest('id'),
         };
 
