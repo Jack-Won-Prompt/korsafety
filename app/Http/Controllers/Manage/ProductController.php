@@ -70,7 +70,8 @@ class ProductController extends Controller
         $stock = $request->query('stock');
         $sort = $request->query('sort', 'latest');
 
-        $query = $this->scoped()->with(['category', 'seller']);
+        // categories까지 미리 불러와 목록에서 대 > 중 > 소 경로를 전부 보여준다
+        $query = $this->scoped()->with(['category', 'categories', 'seller']);
 
         if ($q !== '') {
             $query->where(function ($w) use ($q) {
@@ -136,9 +137,13 @@ class ProductController extends Controller
             'trashed' => $base()->onlyTrashed()->count(),
         ];
 
+        $categories = Category::flatTree();
+
         return view('manage.products.index', [
             'products' => $products,
-            'categories' => Category::flatTree(),
+            'categories' => $categories,
+            // id => '대 > 중 > 소' 경로 (트리 순서 그대로여서 표시 순서로도 쓴다)
+            'catPaths' => $categories->pluck('tree_path', 'id'),
             'stats' => $stats,
             'q' => $q,
             'categoryId' => $categoryId,
@@ -200,7 +205,9 @@ class ProductController extends Controller
             'ids' => 'required|array|min:1',
             'ids.*' => 'integer',
             'bulk_category_id' => 'nullable|exists:categories,id',
-        ], [], ['ids' => '상품', 'bulk_action' => '일괄 작업']);
+            'bulk_category_ids' => 'nullable|array',
+            'bulk_category_ids.*' => 'integer|exists:categories,id',
+        ], [], ['ids' => '상품', 'bulk_action' => '일괄 작업', 'bulk_category_ids' => '카테고리']);
 
         // 남의 스토어 상품이 섞여 들어와도 자기 것만 처리
         $ids = $this->scoped()->whereIn('id', $data['ids'])->pluck('id');
@@ -221,15 +228,24 @@ class ProductController extends Controller
             case 'best_on':   $rows->update(['is_best' => true]);  $msg = '베스트 셀러 지정'; break;
             case 'best_off':  $rows->update(['is_best' => false]); $msg = '베스트 셀러 해제'; break;
             case 'category':
-                if (empty($data['bulk_category_id'])) {
+                // 카테고리를 여러 개 고를 수 있다 (예전 단일 선택 요청도 그대로 받는다)
+                $catIds = array_values(array_unique(array_filter(array_map('intval', (array) ($data['bulk_category_ids'] ?? [])))));
+                if (! $catIds && ! empty($data['bulk_category_id'])) {
+                    $catIds = [(int) $data['bulk_category_id']];
+                }
+                if (! $catIds) {
                     return back()->with('error', '이동할 카테고리를 선택하세요.');
                 }
-                $rows->update(['category_id' => $data['bulk_category_id']]);
+
+                // 대표 분류: 상품 수정 화면과 같은 규칙으로 가장 하위(소분류 우선)를 쓴다
+                $primary = Category::whereIn('id', $catIds)->get()
+                    ->sortByDesc(fn ($c) => $c->depth)->first()?->id;
+                $rows->update(['category_id' => $primary]);
                 // 예전 카테고리 연결이 남으면 쇼핑몰에서 이동이 되지 않으므로 sync로 교체
                 foreach ($ids as $id) {
-                    Product::find($id)?->categories()->sync([$data['bulk_category_id']]);
+                    Product::find($id)?->categories()->sync($catIds);
                 }
-                $msg = '카테고리 이동';
+                $msg = count($catIds) > 1 ? '카테고리 '.count($catIds).'개로 이동' : '카테고리 이동';
                 break;
             default:
                 $rows->delete();
