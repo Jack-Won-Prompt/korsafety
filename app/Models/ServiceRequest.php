@@ -27,9 +27,12 @@ class ServiceRequest extends Model
     protected $fillable = [
         'sr_no', 'user_id', 'requester_role', 'title', 'category', 'priority',
         'status', 'content', 'assignee_id', 'reply_count', 'closed_at', 'resolved_notified_at',
+        'replied_notified_at',
     ];
 
-    protected $casts = ['closed_at' => 'datetime', 'resolved_notified_at' => 'datetime'];
+    protected $casts = [
+        'closed_at' => 'datetime', 'resolved_notified_at' => 'datetime', 'replied_notified_at' => 'datetime',
+    ];
 
     public function user(): BelongsTo
     {
