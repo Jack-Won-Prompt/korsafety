@@ -124,12 +124,31 @@
                     <option value="category">카테고리 이동</option>
                     <option value="delete">삭제</option>
                 </select>
-                <select class="input" name="bulk_category_id" id="bulkCategory" style="height:34px;width:210px;font-size:12.5px" hidden>
-                    <option value="">이동할 카테고리 (대 > 중 > 소)</option>
-                    @foreach($categories as $c)
-                        <option value="{{ $c->id }}">{{ $c->tree_path }}</option>
-                    @endforeach
-                </select>
+                {{-- 카테고리 이동 : 여러 개를 체크할 수 있다 --}}
+                <div class="bulkcat" id="bulkCatWrap" hidden>
+                    <button type="button" class="input bulkcat-btn" id="bulkCatBtn" aria-expanded="false">
+                        <span id="bulkCatLabel">이동할 카테고리 선택</span><i>▾</i>
+                    </button>
+                    <div class="bulkcat-pop" id="bulkCatPop" hidden>
+                        <input type="search" class="input" id="bulkCatSearch" placeholder="카테고리 검색 (대 > 중 > 소)" autocomplete="off">
+                        <div class="cat-picker" id="bulkCatList">
+                            @forelse($categories as $c)
+                                <label class="cat-opt d{{ $c->tree_depth }}" data-path="{{ $c->tree_path }}">
+                                    <input type="checkbox" name="bulk_category_ids[]" value="{{ $c->id }}">
+                                    <span>{{ $c->tree_depth ? '└ ' : '' }}{{ $c->name }}</span>
+                                    <em>{{ \App\Models\Category::DEPTH_LABELS[$c->tree_depth] }}</em>
+                                </label>
+                            @empty
+                                <div class="t-sub" style="padding:8px">등록된 카테고리가 없습니다.</div>
+                            @endforelse
+                        </div>
+                        <div class="bulkcat-foot">
+                            <span class="t-sub" id="bulkCatCount">0개 선택</span>
+                            <button type="button" class="btn btn-sm" id="bulkCatClear">선택 해제</button>
+                            <button type="button" class="btn btn-sm btn-accent" id="bulkCatDone">확인</button>
+                        </div>
+                    </div>
+                </div>
                 <button type="button" class="btn btn-sm" onclick="runBulk()">적용</button>
                 <button class="btn btn-sm btn-accent" formaction="{{ route('manage.products.quicksave') }}">가격·재고 저장</button>
             </div>
@@ -139,7 +158,7 @@
                 <th style="width:34px"><input type="checkbox" id="chkAll" title="전체 선택"></th>
                 <th style="width:56px">이미지</th>
                 <th>상품명 / 코드 · SKU</th>
-                <th style="width:110px">카테고리</th>
+                <th style="width:170px">카테고리</th>
                 <th style="width:112px">{!! $sortCol('판매가', 'price_desc', 'price_asc') !!}</th>
                 <th style="width:112px">{!! $sortCol('할인가', 'sale_desc', 'sale_asc') !!}</th>
                 <th style="width:96px">{!! $sortCol('재고', 'stock_desc', 'stock_asc', '많은순', '적은순') !!}</th>
@@ -147,7 +166,16 @@
                 <th style="width:132px">관리</th>
             </tr></thead>
             <tbody>
+            @php $catRank = $catPaths->keys()->values()->flip(); @endphp
             @forelse($products as $p)
+                @php
+                    // 연결된 카테고리를 트리 순서대로, 대 > 중 > 소 전체 경로로 보여준다
+                    $rowCats = $p->categories->sortBy(fn ($c) => $catRank[$c->id] ?? 9999)
+                        ->map(fn ($c) => $catPaths[$c->id] ?? $c->name)->values();
+                    if ($rowCats->isEmpty() && $p->category) {
+                        $rowCats = collect([$catPaths[$p->category->id] ?? $p->category->name]);
+                    }
+                @endphp
                 <tr>
                     <td><input type="checkbox" class="chkRow" name="ids[]" value="{{ $p->id }}"></td>
                     <td>@if($p->main_image)<img class="thumb" src="{{ asset($p->main_image) }}" alt="" onerror="this.style.visibility='hidden'">@else<div class="thumb"></div>@endif</td>
@@ -159,7 +187,13 @@
                             @if(auth()->user()->isHqAdmin() && $p->seller && ! $p->seller->is_hq) · <span class="badge hq">{{ $p->seller->name }}</span>@endif
                         </div>
                     </td>
-                    <td class="t-sub">{{ $p->category->name ?? '-' }}</td>
+                    <td class="t-sub catcell">
+                        @forelse($rowCats as $path)
+                            <div class="catpath" title="{{ $path }}">{{ $path }}</div>
+                        @empty
+                            -
+                        @endforelse
+                    </td>
                     <td><input class="input qi" type="number" min="0" name="rows[{{ $p->id }}][price]" value="{{ $p->price }}" placeholder="0"></td>
                     <td>
                         <input class="input qi" type="number" min="0" name="rows[{{ $p->id }}][sale_price]" value="{{ $p->sale_price }}" placeholder="-">
@@ -197,7 +231,22 @@
 {{ $products->links('manage.pagination') }}
 
 @push('scripts')
-<style>.table td .qi{height:32px;padding:0 8px;font-size:12.5px;text-align:right;border-radius:7px}</style>
+<style>
+.table td .qi{height:32px;padding:0 8px;font-size:12.5px;text-align:right;border-radius:7px}
+.catcell{line-height:1.45}
+.catcell .catpath{word-break:keep-all}
+.catcell .catpath + .catpath{margin-top:3px;padding-top:3px;border-top:1px dashed var(--line)}
+.bulkcat{position:relative}
+.bulkcat-btn{display:flex;align-items:center;gap:6px;height:34px;width:230px;font-size:12.5px;text-align:left;cursor:pointer;background:#fff}
+.bulkcat-btn span{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bulkcat-btn i{flex:0 0 auto;font-style:normal;color:var(--muted)}
+.bulkcat-btn.on{border-color:var(--accent);color:var(--accent);font-weight:700}
+.bulkcat-pop{position:absolute;top:38px;right:0;z-index:40;width:330px;padding:8px;background:#fff;border:1.5px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(16,24,40,.14)}
+.bulkcat-pop > .input{height:32px;font-size:12.5px;margin-bottom:6px}
+.bulkcat-pop .cat-picker{max-height:280px}
+.bulkcat-foot{display:flex;align-items:center;gap:6px;margin-top:8px}
+.bulkcat-foot .t-sub{flex:1 1 auto}
+</style>
 <script>
 (function(){
     var all = document.getElementById('chkAll');
@@ -207,16 +256,60 @@
     all.addEventListener('change', function(){ rows().forEach(function(c){ c.checked = all.checked; }); refresh(); });
     document.addEventListener('change', function(e){ if(e.target.classList.contains('chkRow')) refresh(); });
 
-    var act = document.getElementById('bulkAction'), cat = document.getElementById('bulkCategory');
-    act.addEventListener('change', function(){ cat.hidden = (act.value !== 'category'); });
+    var act = document.getElementById('bulkAction');
+    var wrap = document.getElementById('bulkCatWrap');
+    var btn = document.getElementById('bulkCatBtn'), pop = document.getElementById('bulkCatPop');
+    var catLabel = document.getElementById('bulkCatLabel'), catCount = document.getElementById('bulkCatCount');
+    var search = document.getElementById('bulkCatSearch');
+    var catBoxes = function(){ return Array.prototype.slice.call(document.querySelectorAll('#bulkCatList input[type=checkbox]')); };
+    var picked = function(){ return catBoxes().filter(function(c){ return c.checked; }); };
+
+    act.addEventListener('change', function(){
+        wrap.hidden = (act.value !== 'category');
+        if(wrap.hidden) closePop();
+    });
+
+    function paths(){
+        return picked().map(function(c){ return c.closest('.cat-opt').getAttribute('data-path'); });
+    }
+    function refreshCat(){
+        var p = paths();
+        catCount.textContent = p.length + '개 선택';
+        btn.classList.toggle('on', p.length > 0);
+        catLabel.textContent = p.length === 0 ? '이동할 카테고리 선택'
+            : (p.length === 1 ? p[0] : p[0] + ' 외 ' + (p.length - 1) + '개');
+        btn.title = p.join('\n');
+    }
+    function openPop(){ pop.hidden = false; btn.setAttribute('aria-expanded','true'); search.focus(); }
+    function closePop(){ pop.hidden = true; btn.setAttribute('aria-expanded','false'); }
+
+    btn.addEventListener('click', function(){ pop.hidden ? openPop() : closePop(); });
+    document.getElementById('bulkCatDone').addEventListener('click', closePop);
+    document.getElementById('bulkCatClear').addEventListener('click', function(){
+        catBoxes().forEach(function(c){ c.checked = false; }); refreshCat();
+    });
+    pop.addEventListener('change', function(e){ if(e.target.type === 'checkbox') refreshCat(); });
+    search.addEventListener('input', function(){
+        var kw = search.value.trim().toLowerCase();
+        Array.prototype.slice.call(document.querySelectorAll('#bulkCatList .cat-opt')).forEach(function(l){
+            var hit = !kw || (l.getAttribute('data-path') || '').toLowerCase().indexOf(kw) >= 0;
+            l.hidden = !hit;
+        });
+    });
+    // 바깥을 누르면 닫는다 (Esc도 같이)
+    document.addEventListener('click', function(e){ if(!pop.hidden && !wrap.contains(e.target)) closePop(); });
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !pop.hidden) closePop(); });
+    refreshCat();
 
     window.runBulk = function(){
         var n = rows().filter(function(c){return c.checked;}).length;
         if(!act.value){ alert('실행할 일괄 작업을 선택하세요.'); act.focus(); return; }
         if(n === 0){ alert('작업할 상품을 체크하세요.'); return; }
-        if(act.value === 'category' && !cat.value){ alert('이동할 카테고리를 선택하세요.'); cat.focus(); return; }
+        var cats = paths();
+        if(act.value === 'category' && cats.length === 0){ alert('이동할 카테고리를 선택하세요.'); openPop(); return; }
         var label = act.options[act.selectedIndex].text;
         var warn = act.value === 'delete' ? '선택한 ' + n + '개 상품을 삭제합니다. 되돌릴 수 없습니다. 진행할까요?'
+                 : act.value === 'category' ? '선택한 ' + n + '개 상품을 아래 카테고리로 이동할까요?\n\n' + cats.join('\n') + '\n\n기존 카테고리 연결은 이 목록으로 바뀝니다.'
                                           : '선택한 ' + n + '개 상품을 "' + label + '" 처리할까요?';
         if(!confirm(warn)) return;
         document.getElementById('prodForm').submit();
