@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Manage;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ServiceRequestCreatedMail;
+use App\Mail\ServiceRequestRepliedMail;
 use App\Mail\ServiceRequestResolvedMail;
 use App\Models\ServiceRequest;
 use App\Models\ServiceRequestReply;
@@ -143,7 +144,7 @@ class ServiceRequestController extends Controller
 
         $data = $request->validate(['body' => 'required|string|max:5000'], [], ['body' => '내용']);
 
-        ServiceRequestReply::create([
+        $reply = ServiceRequestReply::create([
             'service_request_id' => $serviceRequest->id,
             'user_id' => Auth::id(),
             'body' => $data['body'],
@@ -159,6 +160,14 @@ class ServiceRequestController extends Controller
             }
         }
         $serviceRequest->update($update);
+
+        // 담당자 답변이면 등록자에게 안내 메일 (요청자의 추가 문의는 발송하지 않는다)
+        if ($this->isStaff()) {
+            $mail = $this->notifyReplied($serviceRequest, $reply);
+            $redirect = back()->with('status', '답변이 등록되었습니다. '.$mail['message']);
+
+            return $mail['ok'] ? $redirect : $redirect->with('error', $mail['message']);
+        }
 
         return back()->with('status', '답글이 등록되었습니다.');
     }
@@ -211,6 +220,31 @@ class ServiceRequestController extends Controller
             report($e);
 
             return ['ok' => false, 'message' => 'SR 접수 알림 메일 발송에 실패했습니다: '.$e->getMessage()];
+        }
+    }
+
+    /** 담당자 답변 등록 안내 메일 발송 (실패해도 답변은 그대로 남는다) */
+    private function notifyReplied(ServiceRequest $sr, ServiceRequestReply $reply): array
+    {
+        // 본사 담당자가 자기가 올린 SR에 답변한 경우까지 메일을 보내지는 않는다
+        if ((int) $sr->user_id === (int) Auth::id()) {
+            return ['ok' => true, 'message' => '본인이 등록한 SR이라 안내 메일은 보내지 않았습니다.'];
+        }
+
+        $to = $sr->user->email ?? null;
+        if (! $to) {
+            return ['ok' => false, 'message' => '등록자 이메일이 없어 답변 안내 메일은 보내지 못했습니다.'];
+        }
+
+        try {
+            Mail::to($to)->send(new ServiceRequestRepliedMail($sr, $reply));
+            $sr->update(['replied_notified_at' => now()]);
+
+            return ['ok' => true, 'message' => $to.' 로 답변 안내 메일을 발송했습니다.'];
+        } catch (\Throwable $e) {
+            report($e);
+
+            return ['ok' => false, 'message' => '답변 안내 메일 발송에 실패했습니다: '.$e->getMessage()];
         }
     }
 

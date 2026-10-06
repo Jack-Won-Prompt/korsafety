@@ -52,7 +52,10 @@
                             <textarea class="input" name="body" rows="5" style="height:auto;padding:13px;line-height:1.7"
                                       placeholder="{{ $isStaff ? '처리 내용 · 안내 사항을 적어 주세요.' : '추가로 전달할 내용을 적어 주세요.' }}">{{ old('body') }}</textarea>
                         </div>
-                        <button class="btn btn-accent btn-sm">답글 등록</button>
+                        <button class="btn btn-accent btn-sm">{{ $isStaff ? '답변 등록' : '답글 등록' }}</button>
+                        @if($isStaff)
+                            <div class="hint" style="margin-top:8px">답변을 등록하면 등록자({{ $sr->user->email ?? '이메일 없음' }})에게 답변 내용이 메일로 발송됩니다.</div>
+                        @endif
                     </form>
                 @endif
             </div>
@@ -71,6 +74,13 @@
                     <div><span class="t-sub">요청자</span> · {{ $sr->user->name ?? '-' }} ({{ $sr->requester_role ?: '-' }})</div>
                     <div><span class="t-sub">담당자</span> · {{ $sr->assignee->name ?? '미지정' }}</div>
                     <div><span class="t-sub">종료일시</span> · {{ optional($sr->closed_at)->format('Y-m-d H:i') ?: '-' }}</div>
+                    <div><span class="t-sub">답변 안내메일</span> ·
+                        @if($sr->replied_notified_at)
+                            <span class="badge ok">발송</span> <span class="t-sub">{{ $sr->replied_notified_at->format('Y-m-d H:i') }} · {{ $sr->user->email ?? '-' }}</span>
+                        @else
+                            <span class="t-sub">미발송</span>
+                        @endif
+                    </div>
                     <div><span class="t-sub">완료 안내메일</span> ·
                         @if($sr->resolved_notified_at)
                             <span class="badge ok">발송</span> <span class="t-sub">{{ $sr->resolved_notified_at->format('Y-m-d H:i') }} · {{ $sr->user->email ?? '-' }}</span>
