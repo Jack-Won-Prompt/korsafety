@@ -1,7 +1,7 @@
 @extends('manage.layout')
-@section('title', '서버 에러')
-@section('page', '서버 에러 관리')
-@section('crumb', '서버에서 발생한 에러의 유형 · 상세 · 처리 상태')
+@section('title', '오류 관리')
+@section('page', '오류 관리')
+@section('crumb', '서버 · 웹스크립트 오류의 유형 · 상세 · 처리 상태')
 
 @push('styles')
 <style>
@@ -23,37 +23,38 @@
 @php
     $tabUrl = fn ($s) => route('admin.errors', array_merge(request()->except(['page', 'status']), ['status' => $s]));
     $typeUrl = fn ($t) => route('admin.errors', array_merge(request()->except(['page', 'type']), ['type' => $t]));
-    $typeBadge = ['database' => 'off', 'php' => 'alert', 'http' => 'warn', 'external' => 'hq', 'application' => 'warn'];
+    $typeBadge = ['database' => 'off', 'php' => 'alert', 'http' => 'warn', 'external' => 'hq', 'application' => 'warn', 'javascript' => 'hq'];
 @endphp
 
 {{-- 요약 --}}
 <div class="tiles">
     <div class="tile">
-        <div class="lab">미해결</div>
+        <div class="lab">미처리</div>
         <div class="val" style="{{ $stats['unresolved'] ? 'color:#c11c0f' : '' }}">{{ number_format($stats['unresolved']) }}<span class="won"> 건</span></div>
-        <div class="sub">처리가 필요한 에러</div>
+        <div class="sub">처리중 {{ number_format($stats['in_progress']) }}건</div>
     </div>
     <div class="tile">
         <div class="lab">오늘 발생</div>
         <div class="val">{{ number_format($stats['today']) }}<span class="won"> 건</span></div>
-        <div class="sub">그중 새로 생긴 에러 {{ number_format($stats['today_new']) }}건</div>
+        <div class="sub">그중 새로 생긴 오류 {{ number_format($stats['today_new']) }}건</div>
     </div>
     <div class="tile">
-        <div class="lab">최근 7일 신규</div>
-        <div class="val">{{ number_format($stats['week_new']) }}<span class="won"> 건</span></div>
-        <div class="sub">처음 발생 기준</div>
+        <div class="lab">웹스크립트 오류</div>
+        <div class="val" style="{{ $stats['javascript'] ? 'color:#a35a06' : '' }}">{{ number_format($stats['javascript']) }}<span class="won"> 건</span></div>
+        <div class="sub">화면에서 난 오류 (처리 전)</div>
     </div>
     <div class="tile">
-        <div class="lab">해결 완료</div>
+        <div class="lab">처리완료</div>
         <div class="val">{{ number_format($stats['resolved']) }}<span class="won"> 건</span></div>
-        <div class="sub">누적</div>
+        <div class="sub">확인함(무시) {{ number_format($stats['ignored']) }}건 · 최근 7일 신규 {{ number_format($stats['week_new']) }}건</div>
     </div>
 </div>
 
 <div class="err-tabs">
-    <a href="{{ $tabUrl('unresolved') }}" class="{{ $status === 'unresolved' ? 'on' : '' }}">미해결<b>{{ number_format($stats['unresolved']) }}</b></a>
-    <a href="{{ $tabUrl('resolved') }}" class="{{ $status === 'resolved' ? 'on' : '' }}">해결<b>{{ number_format($stats['resolved']) }}</b></a>
-    <a href="{{ $tabUrl('all') }}" class="{{ $status === 'all' ? 'on' : '' }}">전체<b>{{ number_format($stats['unresolved'] + $stats['resolved']) }}</b></a>
+    @foreach(\App\Models\ErrorLog::STATUSES as $k => $v)
+        <a href="{{ $tabUrl($k) }}" class="{{ $status === $k ? 'on' : '' }}">{{ $v }}<b>{{ number_format($stats[$k] ?? 0) }}</b></a>
+    @endforeach
+    <a href="{{ $tabUrl('all') }}" class="{{ $status === 'all' ? 'on' : '' }}">전체<b>{{ number_format($stats['all']) }}</b></a>
 </div>
 
 {{-- 검색 --}}
@@ -83,7 +84,7 @@
         </form>
         @if($typeCounts->count())
             <div class="err-types">
-                <span class="t-sub" style="align-self:center">미해결 유형별</span>
+                <span class="t-sub" style="align-self:center">처리 전 유형별</span>
                 @foreach(\App\Models\ErrorLog::TYPES as $k => $v)
                     @if(!empty($typeCounts[$k]))
                         <a href="{{ $typeUrl($type === $k ? null : $k) }}" class="{{ $type === $k ? 'on' : '' }}">{{ $v }} {{ number_format($typeCounts[$k]) }}</a>
@@ -97,32 +98,35 @@
 {{-- 목록 --}}
 <div class="panel">
     <div class="panel-h">
-        <div><h2>에러 목록</h2><div class="sub">총 {{ number_format($logs->total()) }}건 · 같은 원인의 에러는 한 건으로 묶어 발생 횟수를 셉니다</div></div>
+        <div><h2>오류 목록</h2><div class="sub">총 {{ number_format($logs->total()) }}건 · 같은 원인의 오류는 한 건으로 묶어 발생 횟수를 셉니다</div></div>
         <form action="{{ route('admin.errors.purge') }}" method="post" style="display:flex;gap:8px;align-items:center"
               onsubmit="return confirm('설정한 기간보다 오래전에 해결된 에러를 삭제합니다. 진행할까요?')">@csrf
-            <span class="t-sub">해결 후 보관</span>
+            <span class="t-sub">처리 후 보관</span>
             <select class="input" name="days" style="height:34px;width:96px;font-size:12.5px">
                 <option value="30">30일</option>
                 <option value="90" selected>90일</option>
                 <option value="180">180일</option>
                 <option value="365">365일</option>
             </select>
-            <button class="btn btn-sm btn-danger">오래된 해결 건 삭제</button>
+            <button class="btn btn-sm btn-danger">오래된 처리 건 삭제</button>
         </form>
     </div>
 
     <form id="bulk" action="{{ route('admin.errors.bulk') }}" method="post">@csrf
         <div style="display:flex;gap:8px;align-items:center;padding:10px 18px;border-bottom:1px solid #eef0f4">
             <span class="t-sub" id="bulk-count">선택 0건</span>
-            <button class="btn btn-sm" name="action" value="resolve" onclick="return confirm('선택한 에러를 해결 처리할까요?')">선택 해결 처리</button>
-            <button class="btn btn-sm btn-danger" name="action" value="delete" onclick="return confirm('선택한 에러를 삭제할까요? 되돌릴 수 없습니다.')">선택 삭제</button>
+            <button class="btn btn-sm" name="action" value="in_progress" onclick="return confirm('선택한 오류를 처리중으로 바꿀까요?')">처리중</button>
+            <button class="btn btn-sm btn-accent" name="action" value="resolved" onclick="return confirm('선택한 오류를 처리완료로 바꿀까요?')">처리완료</button>
+            <button class="btn btn-sm" name="action" value="ignored" onclick="return confirm('선택한 오류를 확인함(무시)으로 바꿀까요?')">확인함(무시)</button>
+            <button class="btn btn-sm" name="action" value="unresolved" onclick="return confirm('선택한 오류를 미처리로 되돌릴까요?')">미처리로</button>
+            <button class="btn btn-sm btn-danger" name="action" value="delete" onclick="return confirm('선택한 오류를 삭제할까요? 되돌릴 수 없습니다.')">선택 삭제</button>
         </div>
     </form>
 
     <table class="table">
         <thead><tr>
             <th style="width:34px"><input type="checkbox" id="check-all" title="전체 선택"></th>
-            <th style="width:70px">상태</th>
+            <th style="width:92px">처리 상태</th>
             <th style="width:100px">유형</th>
             <th>에러 내용</th>
             <th style="width:76px">발생</th>
@@ -134,7 +138,10 @@
         @forelse($logs as $log)
             <tr>
                 <td><input type="checkbox" name="ids[]" value="{{ $log->id }}" form="bulk" class="row-check"></td>
-                <td><span class="badge {{ $log->isResolved() ? 'ok' : 'off' }}">{{ $log->status_label }}</span></td>
+                <td>
+                    <span class="badge {{ $log->status_badge }}">{{ $log->status_label }}</span>
+                    @if($log->assignee)<div class="t-sub" style="font-size:11px;margin-top:3px">{{ $log->assignee->name }}</div>@endif
+                </td>
                 <td><span class="badge {{ $typeBadge[$log->type] ?? 'warn' }}">{{ $log->type_label }}</span></td>
                 <td>
                     <a class="err-msg" href="{{ route('admin.errors.show', $log) }}">
@@ -157,9 +164,9 @@
         @empty
             <tr><td colspan="8" class="empty">
                 @if($status === 'unresolved' && $q === '' && !$type && !$source && !$from && !$to)
-                    미해결 에러가 없습니다.
+                    미처리 오류가 없습니다.
                 @else
-                    조건에 맞는 에러가 없습니다.
+                    조건에 맞는 오류가 없습니다.
                 @endif
             </td></tr>
         @endforelse

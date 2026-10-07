@@ -28,36 +28,41 @@
 <div class="panel">
     <div class="panel-h">
         <div class="err-status">
-            <span class="badge {{ $log->isResolved() ? 'ok' : 'off' }}" style="font-size:13px;padding:6px 14px">{{ $log->status_label }}</span>
+            <span class="badge {{ $log->status_badge }}" style="font-size:13px;padding:6px 14px">{{ $log->status_label }}</span>
             <div>
                 <h2 style="margin:0">처리 상태</h2>
                 <div class="sub">
-                    @if($log->isResolved())
-                        {{ optional($log->resolved_at)->format('Y.m.d H:i') }} · {{ $log->resolver->name ?? '알 수 없음' }} 님이 해결 처리
-                    @else
-                        {{ number_format($log->occurrences) }}회 발생 · 최근 {{ optional($log->last_seen_at)->locale('ko')->diffForHumans() }}
-                    @endif
+                    {{ number_format($log->occurrences) }}회 발생 · 최근 {{ optional($log->last_seen_at)->locale('ko')->diffForHumans() }}
+                    @if($log->assignee) · 담당 <b>{{ $log->assignee->name }}</b>@endif
+                    @if($log->resolved_at) · {{ optional($log->resolved_at)->format('Y.m.d H:i') }} {{ $log->resolver->name ?? '' }} 처리@endif
                 </div>
             </div>
         </div>
     </div>
     <div class="panel-b">
-        @if($log->isResolved())
-            @if($log->resolution_note)
-                <div class="t-sub" style="margin-bottom:6px">처리 내용</div>
-                <div style="white-space:pre-wrap;font-size:13.5px;margin-bottom:14px">{{ $log->resolution_note }}</div>
-            @endif
-            <form action="{{ route('admin.errors.reopen', $log) }}" method="post">@csrf
-                <button class="btn btn-sm">미해결로 되돌리기</button>
-                <span class="hint" style="margin-left:8px">해결 후 같은 에러가 다시 나면 새 미해결 건으로 자동 등록됩니다.</span>
-            </form>
-        @else
-            <form action="{{ route('admin.errors.resolve', $log) }}" method="post">@csrf
-                <textarea class="input" name="note" rows="3" maxlength="2000" style="width:100%;height:auto;padding:10px 12px"
-                          placeholder="처리 내용 (선택) — 원인, 수정한 내용, 배포 버전 등">{{ old('note') }}</textarea>
-                <div style="margin-top:10px"><button class="btn btn-accent">해결 처리</button></div>
-            </form>
+        @if($log->resolution_note)
+            <div class="t-sub" style="margin-bottom:6px">처리 메모</div>
+            <div style="white-space:pre-wrap;font-size:13.5px;margin-bottom:14px">{{ $log->resolution_note }}</div>
         @endif
+        <form action="{{ route('admin.errors.status', $log) }}" method="post">@csrf
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+                <select class="input" name="status" style="height:38px;flex:0 0 150px">
+                    @foreach(\App\Models\ErrorLog::STATUSES as $k => $v)
+                        <option value="{{ $k }}" @selected(old('status', $log->status) === $k)>{{ $v }}</option>
+                    @endforeach
+                </select>
+                <select class="input" name="assigned_to" style="height:38px;flex:0 0 160px">
+                    <option value="">담당자 없음</option>
+                    @foreach($staff as $u)
+                        <option value="{{ $u->id }}" @selected((string) old('assigned_to', $log->assigned_to) === (string) $u->id)>{{ $u->name }}</option>
+                    @endforeach
+                </select>
+                <button class="btn btn-accent">상태 저장</button>
+            </div>
+            <textarea class="input" name="note" rows="3" maxlength="2000" style="width:100%;height:auto;padding:10px 12px"
+                      placeholder="처리 메모 (선택) — 원인, 수정한 내용, 배포 버전 등">{{ old('note', $log->resolution_note) }}</textarea>
+        </form>
+        <div class="hint" style="margin-top:8px">처리완료·확인함으로 바꾼 뒤 같은 오류가 다시 나면 새 미처리 건으로 자동 등록됩니다.</div>
     </div>
 </div>
 
@@ -124,7 +129,7 @@
         @foreach($related as $r)
             <tr>
                 <td><a href="{{ route('admin.errors.show', $r) }}">#{{ $r->id }}</a></td>
-                <td><span class="badge {{ $r->isResolved() ? 'ok' : 'off' }}">{{ $r->status_label }}</span></td>
+                <td><span class="badge {{ $r->status_badge }}">{{ $r->status_label }}</span></td>
                 <td>{{ number_format($r->occurrences) }}회</td>
                 <td class="t-sub">{{ optional($r->first_seen_at)->format('m.d H:i') }} ~ {{ optional($r->last_seen_at)->format('m.d H:i') }}</td>
                 <td class="t-sub">

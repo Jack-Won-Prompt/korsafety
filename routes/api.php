@@ -22,6 +22,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/ping', fn () => ['ok' => true, 'app' => config('app.name')]);
 
+// 화면(브라우저)에서 난 웹스크립트 오류 접수 — 과도한 전송을 막기 위해 분당 30건으로 제한
+Route::post('client-errors', [\App\Http\Controllers\Api\ClientErrorController::class, 'store'])
+    ->middleware('throttle:30,1');
+
 /*
 |--------------------------------------------------------------------------
 | 인증

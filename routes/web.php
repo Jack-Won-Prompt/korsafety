@@ -125,8 +125,7 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
     Route::post('errors/bulk', [AdminErrorLog::class, 'bulk'])->name('admin.errors.bulk');
     Route::post('errors/purge', [AdminErrorLog::class, 'purge'])->name('admin.errors.purge');
     Route::get('errors/{errorLog}', [AdminErrorLog::class, 'show'])->name('admin.errors.show');
-    Route::post('errors/{errorLog}/resolve', [AdminErrorLog::class, 'resolve'])->name('admin.errors.resolve');
-    Route::post('errors/{errorLog}/reopen', [AdminErrorLog::class, 'reopen'])->name('admin.errors.reopen');
+    Route::post('errors/{errorLog}/status', [AdminErrorLog::class, 'status'])->name('admin.errors.status');
     Route::delete('errors/{errorLog}', [AdminErrorLog::class, 'destroy'])->name('admin.errors.destroy');
     Route::get('settings', [AdminController::class, 'settings'])->name('admin.settings');
     Route::post('settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');

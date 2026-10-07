@@ -23,17 +23,26 @@ class ErrorLog extends Model
         'http' => 'HTTP 오류',
         'external' => '외부 연동',
         'application' => '애플리케이션',
+        'javascript' => '웹스크립트',
     ];
 
-    public const STATUSES = ['unresolved' => '미해결', 'resolved' => '해결'];
+    public const STATUSES = [
+        'unresolved' => '미처리',
+        'in_progress' => '처리중',
+        'resolved' => '처리완료',
+        'ignored' => '확인함(무시)',
+    ];
 
-    public const SOURCES = ['web' => '웹', 'api' => 'API', 'console' => '콘솔'];
+    /** 아직 처리가 끝나지 않은 상태 — 같은 원인의 에러는 이 건에 묶인다 */
+    public const OPEN_STATUSES = ['unresolved', 'in_progress'];
+
+    public const SOURCES = ['web' => '웹', 'api' => 'API', 'console' => '콘솔', 'browser' => '브라우저'];
 
     protected $fillable = [
         'fingerprint', 'type', 'source', 'exception_class', 'message', 'code', 'file', 'line', 'trace',
         'url', 'method', 'ip_address', 'user_id', 'user_agent', 'input',
         'occurrences', 'first_seen_at', 'last_seen_at',
-        'status', 'resolved_at', 'resolved_by', 'resolution_note',
+        'status', 'resolved_at', 'resolved_by', 'resolution_note', 'assigned_to', 'status_changed_at',
     ];
 
     protected $casts = [
@@ -41,6 +50,7 @@ class ErrorLog extends Model
         'first_seen_at' => 'datetime',
         'last_seen_at' => 'datetime',
         'resolved_at' => 'datetime',
+        'status_changed_at' => 'datetime',
     ];
 
     private static bool $writing = false;
@@ -53,6 +63,11 @@ class ErrorLog extends Model
     public function resolver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'resolved_by');
+    }
+
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 
     public function getTypeLabelAttribute(): string
@@ -80,6 +95,23 @@ class ErrorLog extends Model
         return $this->status === 'resolved';
     }
 
+    /** 아직 처리가 끝나지 않았는가 */
+    public function isOpen(): bool
+    {
+        return in_array($this->status, self::OPEN_STATUSES, true);
+    }
+
+    /** 목록·상세에서 쓸 상태 뱃지 색 */
+    public function getStatusBadgeAttribute(): string
+    {
+        return match ($this->status) {
+            'resolved' => 'ok',
+            'in_progress' => 'warn',
+            'ignored' => 'hq',
+            default => 'off',
+        };
+    }
+
     /** 보고된 예외 기록 (bootstrap/app.php의 report 훅에서 호출) */
     public static function capture(Throwable $e): void
     {
@@ -97,7 +129,7 @@ class ErrorLog extends Model
 
             $context = self::requestContext() + ['message' => $message];
 
-            $open = self::where('fingerprint', $fingerprint)->where('status', 'unresolved')->first();
+            $open = self::where('fingerprint', $fingerprint)->whereIn('status', self::OPEN_STATUSES)->first();
             if ($open) {
                 $open->fill($context + ['last_seen_at' => $now]);
                 $open->occurrences = $open->occurrences + 1;
@@ -121,6 +153,79 @@ class ErrorLog extends Model
             ]);
         } catch (Throwable $ignored) {
             // DB 장애 등으로 기록하지 못해도 기본 파일 로그는 그대로 남는다
+        } finally {
+            self::$writing = false;
+        }
+    }
+
+    /**
+     * 브라우저(웹스크립트) 오류 기록.
+     * 화면에서 보내온 값이므로 길이를 자르고, 서버 예외와 같은 방식으로 묶는다.
+     */
+    public static function captureClient(array $data): void
+    {
+        if (self::$writing) {
+            return;
+        }
+        self::$writing = true;
+
+        try {
+            $message = self::clean(trim((string) ($data['message'] ?? '')), 5000);
+            if ($message === '') {
+                return;
+            }
+
+            $class = (string) ($data['kind'] ?? 'Error');
+            if (! preg_match('/^[A-Za-z][A-Za-z0-9_]{0,59}$/', $class)) {
+                $class = 'Error';
+            }
+            $file = self::clean((string) ($data['file'] ?? ''), 500) ?: null;
+            $line = ((int) ($data['line'] ?? 0)) ?: null;
+
+            $fingerprint = sha1('js|'.$class.'|'.$file.'|'.$line.'|'.self::normalize($message));
+            $now = now();
+
+            $request = request();
+            $userId = null;
+            try {
+                $userId = Auth::id();
+            } catch (Throwable $ignored) {
+            }
+
+            $context = [
+                'source' => 'browser',
+                'url' => self::clean((string) ($data['url'] ?? ''), 1000) ?: null,
+                'method' => 'JS',
+                'ip_address' => $request?->ip(),
+                'user_id' => $userId,
+                'user_agent' => mb_substr((string) $request?->userAgent(), 0, 512) ?: null,
+                'input' => null,
+                'message' => $message,
+            ];
+
+            $open = self::where('fingerprint', $fingerprint)->whereIn('status', self::OPEN_STATUSES)->first();
+            if ($open) {
+                $open->fill($context + ['last_seen_at' => $now]);
+                $open->occurrences = $open->occurrences + 1;
+                $open->save();
+
+                return;
+            }
+
+            self::create($context + [
+                'fingerprint' => $fingerprint,
+                'type' => 'javascript',
+                'exception_class' => $class,
+                'code' => null,
+                'file' => $file,
+                'line' => $line,
+                'trace' => self::clean((string) ($data['stack'] ?? ''), 20000) ?: null,
+                'occurrences' => 1,
+                'first_seen_at' => $now,
+                'last_seen_at' => $now,
+                'status' => 'unresolved',
+            ]);
+        } catch (Throwable $ignored) {
         } finally {
             self::$writing = false;
         }
