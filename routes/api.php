@@ -34,6 +34,9 @@ Route::post('client-errors', [\App\Http\Controllers\Api\ClientErrorController::c
 Route::post('auth/register', [AuthController::class, 'register']);
 Route::post('auth/login', [AuthController::class, 'login']);
 Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:6,1');
+Route::post('auth/register-partner', [AuthController::class, 'registerPartner']);
+Route::post('auth/email/send-code', [AuthController::class, 'sendEmailCode'])->middleware('throttle:8,1');
+Route::post('auth/email/verify-code', [AuthController::class, 'verifyEmailCode'])->middleware('throttle:20,1');
 
 /*
 |--------------------------------------------------------------------------

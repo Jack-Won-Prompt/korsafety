@@ -28,6 +28,83 @@ class EmailVerificationController extends Controller
         return 'email-verify:'.sha1(mb_strtolower(trim($email)));
     }
 
+    /**
+     * 인증번호를 새로 만들어 저장하고 돌려준다 (웹·앱 공통).
+     * 1분 안에 다시 요청하면 null 을 돌려주고 남은 시간을 $retryAfter 에 담는다.
+     */
+    public static function issueCode(string $email, ?int &$retryAfter = null): ?string
+    {
+        $email = mb_strtolower(trim($email));
+        $key = 'email-verify:'.sha1($email);
+
+        $existing = Cache::get($key);
+        $elapsed = $existing && isset($existing['sent_at']) ? now()->timestamp - (int) $existing['sent_at'] : null;
+        if ($elapsed !== null && $elapsed < 60) {
+            $retryAfter = 60 - $elapsed;
+
+            return null;
+        }
+
+        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        Cache::put($key, ['code' => $code, 'tries' => 0, 'sent_at' => now()->timestamp], now()->addMinutes(self::CODE_MINUTES));
+
+        return $code;
+    }
+
+    /**
+     * 인증번호 확인 (웹·앱 공통). 맞으면 null, 틀리면 안내 문구를 돌려준다.
+     */
+    public static function checkCode(string $email, string $code): ?string
+    {
+        $email = mb_strtolower(trim($email));
+        $key = 'email-verify:'.sha1($email);
+        $saved = Cache::get($key);
+
+        if (! $saved) {
+            return '인증번호가 만료되었습니다. 다시 받아 주세요.';
+        }
+        if ($saved['tries'] >= self::MAX_TRIES) {
+            Cache::forget($key);
+
+            return '인증번호를 너무 여러 번 틀렸습니다. 다시 받아 주세요.';
+        }
+        if (! hash_equals($saved['code'], preg_replace('/\D/', '', $code))) {
+            $saved['tries']++;
+            Cache::put($key, $saved, now()->addMinutes(self::CODE_MINUTES));
+
+            return '인증번호가 맞지 않습니다. ('.(self::MAX_TRIES - $saved['tries']).'회 남음)';
+        }
+
+        Cache::forget($key);
+
+        return null;
+    }
+
+    /** 앱처럼 세션을 쓰지 않는 곳에서 쓸 인증 완료 토큰 */
+    public static function issueVerifyToken(string $email): string
+    {
+        $token = Str::lower(Str::random(48));
+        Cache::put('email-verified-token:'.sha1(mb_strtolower(trim($email))), $token, now()->addMinutes(self::VERIFIED_MINUTES));
+
+        return $token;
+    }
+
+    /** 앱에서 보낸 인증 완료 토큰이 그 이메일의 것인가 */
+    public static function consumeVerifyToken(string $email, ?string $token): bool
+    {
+        if (! $token) {
+            return false;
+        }
+        $key = 'email-verified-token:'.sha1(mb_strtolower(trim($email)));
+        $saved = Cache::get($key);
+        if (! $saved || ! hash_equals($saved, $token)) {
+            return false;
+        }
+        Cache::forget($key);
+
+        return true;
+    }
+
     /** 인증번호 발송 */
     public function send(Request $request)
     {
@@ -38,25 +115,15 @@ class EmailVerificationController extends Controller
         ], ['email' => '이메일']);
 
         $email = mb_strtolower(trim($data['email']));
-        $key = $this->codeKey($email);
 
-        // 1분 안에 다시 요청하면 기존 번호를 다시 보내지 않고 안내만 한다
-        // (캐시에는 날짜 객체 대신 숫자로 담는다 — 저장소에 따라 객체 복원이 실패할 수 있다)
-        $existing = Cache::get($key);
-        $elapsed = $existing && isset($existing['sent_at']) ? now()->timestamp - (int) $existing['sent_at'] : null;
-        if ($elapsed !== null && $elapsed < 60) {
+        $retryAfter = null;
+        $code = self::issueCode($email, $retryAfter);
+        if ($code === null) {
             return response()->json([
                 'message' => '방금 인증번호를 보냈습니다. 메일함을 확인해 주세요.',
-                'retry_after' => 60 - $elapsed,
+                'retry_after' => $retryAfter,
             ], 429);
         }
-
-        $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        Cache::put($key, [
-            'code' => $code,
-            'tries' => 0,
-            'sent_at' => now()->timestamp,
-        ], now()->addMinutes(self::CODE_MINUTES));
 
         try {
             Mail::to($email)->send(new EmailVerificationCodeMail($code, self::CODE_MINUTES));
@@ -81,29 +148,11 @@ class EmailVerificationController extends Controller
         ], [], ['email' => '이메일', 'code' => '인증번호']);
 
         $email = mb_strtolower(trim($data['email']));
-        $key = $this->codeKey($email);
-        $saved = Cache::get($key);
 
-        if (! $saved) {
-            return response()->json(['message' => '인증번호가 만료되었습니다. 다시 받아 주세요.'], 422);
+        if ($error = self::checkCode($email, $data['code'])) {
+            return response()->json(['message' => $error], 422);
         }
 
-        if ($saved['tries'] >= self::MAX_TRIES) {
-            Cache::forget($key);
-
-            return response()->json(['message' => '인증번호를 너무 여러 번 틀렸습니다. 다시 받아 주세요.'], 429);
-        }
-
-        if (! hash_equals($saved['code'], preg_replace('/\D/', '', $data['code']))) {
-            $saved['tries']++;
-            Cache::put($key, $saved, now()->addMinutes(self::CODE_MINUTES));
-
-            return response()->json([
-                'message' => '인증번호가 맞지 않습니다. ('.(self::MAX_TRIES - $saved['tries']).'회 남음)',
-            ], 422);
-        }
-
-        Cache::forget($key);
         self::markVerified($request, $email);
 
         return response()->json(['message' => '이메일 인증이 완료되었습니다.']);
