@@ -3,6 +3,8 @@
 @section('robots', 'noindex,nofollow')
 
 @section('content')
+@include('partials.address-finder')
+@include('partials.email-verify')
 <div class="wrap">
     <div class="acct">
         <div class="acct-ico">
@@ -13,15 +15,25 @@
 
         @if($errors->any())<div class="err">{{ $errors->first() }}</div>@endif
 
-        <form action="{{ route('register.post') }}" method="post">
+        <form action="{{ route('register.post') }}" method="post" data-verify-form>
             @csrf
+            <input type="hidden" name="email_verified" value="{{ old('email_verified') }}">
             <div class="field">
                 <label>이름</label>
                 <input type="text" name="name" value="{{ old('name') }}" autofocus placeholder="홍길동">
             </div>
             <div class="field">
-                <label>이메일</label>
-                <input type="email" name="email" value="{{ old('email') }}" placeholder="you@example.com">
+                <label>이메일 <span class="req">*</span></label>
+                <div class="addr-row">
+                    <input type="email" name="email" value="{{ old('email') }}" placeholder="you@example.com" autocomplete="email">
+                    <button type="button" class="btn btn-line addr-btn" data-verify-send>인증하기</button>
+                </div>
+                <div class="addr-row" data-verify-row hidden>
+                    <input type="text" inputmode="numeric" maxlength="6" placeholder="인증번호 6자리" data-verify-code autocomplete="one-time-code">
+                    <span class="verify-timer" data-verify-timer hidden></span>
+                    <button type="button" class="btn btn-line addr-btn" data-verify-confirm>확인</button>
+                </div>
+                <div class="verify-msg" data-verify-msg hidden></div>
             </div>
             <div class="field">
                 <label>휴대전화</label>
@@ -29,10 +41,13 @@
             </div>
 
             <div class="field">
-                <label>주소 <span style="color:#9aa0a6;font-size:12px;font-weight:600">선택</span></label>
-                <input type="text" name="postcode" value="{{ old('postcode') }}" placeholder="우편번호" style="margin-bottom:8px">
-                <input type="text" name="address1" value="{{ old('address1') }}" placeholder="주소" style="margin-bottom:8px">
-                <input type="text" name="address2" value="{{ old('address2') }}" placeholder="상세주소">
+                <label>주소 <span class="opt">선택</span></label>
+                <div class="addr-row">
+                    <input type="text" id="join_postcode" name="postcode" value="{{ old('postcode') }}" placeholder="우편번호" readonly>
+                    <button type="button" class="btn btn-line addr-btn" data-addr-find="join">주소 검색</button>
+                </div>
+                <input type="text" id="join_address1" name="address1" value="{{ old('address1') }}" placeholder="주소" readonly style="margin-bottom:8px">
+                <input type="text" id="join_address2" name="address2" value="{{ old('address2') }}" placeholder="상세주소 (동·호수 등)">
             </div>
 
             <div class="field">

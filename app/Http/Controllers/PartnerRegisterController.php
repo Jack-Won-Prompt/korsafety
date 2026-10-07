@@ -56,13 +56,20 @@ class PartnerRegisterController extends Controller
             'company_phone' => 'required|string|max:30',
             'company_fax' => 'nullable|string|max:30',
             'owner_name' => 'required|string|max:50',
-            'business_address' => 'required|string|max:300',
+            'postcode' => 'nullable|string|max:10',
+            'address1' => 'required|string|max:200',
+            'address2' => 'nullable|string|max:200',
             'license' => 'required|file|mimes:jpg,jpeg,png,webp,pdf|max:8192',
         ], [], [
             'name' => '가입자 이름', 'phone' => '가입자 휴대전화', 'email' => '이메일', 'password' => '비밀번호',
             'company_name' => '회사명', 'company_phone' => '회사 전화번호', 'company_fax' => '회사 팩스',
-            'owner_name' => '대표자 이름', 'business_address' => '사업장 주소', 'license' => '사업자등록증',
+            'owner_name' => '대표자 이름', 'postcode' => '우편번호', 'address1' => '사업장 주소',
+            'address2' => '상세주소', 'license' => '사업자등록증',
         ]);
+
+        if (! EmailVerificationController::isVerified($request, $data['email'])) {
+            return back()->withErrors(['email' => '이메일 인증을 먼저 완료해 주세요.'])->withInput();
+        }
 
         // 사업자등록증은 공개 폴더 밖에 저장하고, 본사 관리자만 내려받을 수 있게 한다
         $file = $request->file('license');
@@ -83,7 +90,9 @@ class PartnerRegisterController extends Controller
             'company_phone' => $data['company_phone'],
             'company_fax' => $data['company_fax'] ?? null,
             'owner_name' => $data['owner_name'],
-            'business_address' => $data['business_address'],
+            'business_address' => trim(
+                ($data['postcode'] ? '('.$data['postcode'].') ' : '').$data['address1'].' '.($data['address2'] ?? '')
+            ),
             'license_path' => $path,
             'status' => 'pending',
         ]);

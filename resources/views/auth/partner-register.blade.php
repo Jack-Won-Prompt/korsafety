@@ -3,6 +3,8 @@
 @section('robots', 'noindex,nofollow')
 
 @section('content')
+@include('partials.address-finder')
+@include('partials.email-verify')
 <div class="wrap">
     <div class="acct" style="max-width:620px">
         <div class="acct-ico">
@@ -13,8 +15,9 @@
 
         @if($errors->any())<div class="err">{{ $errors->first() }}</div>@endif
 
-        <form action="{{ route('partner.register.post') }}" method="post" enctype="multipart/form-data">
+        <form action="{{ route('partner.register.post') }}" method="post" enctype="multipart/form-data" data-verify-form>
             @csrf
+            <input type="hidden" name="email_verified" value="{{ old('email_verified') }}">
 
             <div class="field-group-title">가입자 정보</div>
             <div class="field">
@@ -27,7 +30,16 @@
             </div>
             <div class="field">
                 <label>이메일 (로그인 아이디) <span class="req">*</span></label>
-                <input type="email" name="email" value="{{ old('email') }}" placeholder="you@example.com">
+                <div class="addr-row">
+                    <input type="email" name="email" value="{{ old('email') }}" placeholder="you@example.com" autocomplete="email">
+                    <button type="button" class="btn btn-line addr-btn" data-verify-send>인증하기</button>
+                </div>
+                <div class="addr-row" data-verify-row hidden>
+                    <input type="text" inputmode="numeric" maxlength="6" placeholder="인증번호 6자리" data-verify-code autocomplete="one-time-code">
+                    <span class="verify-timer" data-verify-timer hidden></span>
+                    <button type="button" class="btn btn-line addr-btn" data-verify-confirm>확인</button>
+                </div>
+                <div class="verify-msg" data-verify-msg hidden></div>
             </div>
             <div class="field">
                 <label>비밀번호 <span class="req">*</span></label>
@@ -57,7 +69,12 @@
             </div>
             <div class="field">
                 <label>사업장 주소 <span class="req">*</span></label>
-                <input type="text" name="business_address" value="{{ old('business_address') }}" placeholder="서울시 중구 ○○로 00, 0층">
+                <div class="addr-row">
+                    <input type="text" id="biz_postcode" name="postcode" value="{{ old('postcode') }}" placeholder="우편번호" readonly>
+                    <button type="button" class="btn btn-line addr-btn" data-addr-find="biz">주소 검색</button>
+                </div>
+                <input type="text" id="biz_address1" name="address1" value="{{ old('address1') }}" placeholder="주소" readonly style="margin-bottom:8px">
+                <input type="text" id="biz_address2" name="address2" value="{{ old('address2') }}" placeholder="상세주소 (층·호수 등)">
             </div>
             <div class="field">
                 <label>사업자등록증 <span class="req">*</span></label>
@@ -75,13 +92,4 @@
     </div>
 </div>
 
-@push('styles')
-<style>
-    .field-group-title{margin:18px 0 10px;padding-top:14px;border-top:1px solid #eef0f4;font-weight:800;font-size:14px;color:#1b2130}
-    .field-group-title:first-of-type{border-top:0;padding-top:0;margin-top:4px}
-    .req{color:#c11c0f;font-weight:700}
-    .opt{color:#9aa0a6;font-weight:600;font-size:12px}
-    .hint{margin-top:6px;font-size:12px;color:#8a90a0;line-height:1.5}
-</style>
-@endpush
 @endsection

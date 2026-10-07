@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\EmailVerificationController;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -90,6 +91,11 @@ class CustomerAuthController extends Controller
             'name' => '이름', 'email' => '이메일', 'phone' => '휴대전화',
             'postcode' => '우편번호', 'address1' => '주소', 'address2' => '상세주소', 'password' => '비밀번호',
         ]);
+
+        // 이메일 인증을 마친 주소인지 서버에서 다시 확인한다 (화면 조작으로 건너뛸 수 없게)
+        if (! EmailVerificationController::isVerified($request, $data['email'])) {
+            return back()->withErrors(['email' => '이메일 인증을 먼저 완료해 주세요.'])->withInput();
+        }
 
         $user = User::create([
             'name' => $data['name'],

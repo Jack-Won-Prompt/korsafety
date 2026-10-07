@@ -4,42 +4,63 @@
 
 @section('content')
 <div class="wrap">
-    <div class="acct" style="max-width:760px">
-        <div class="acct-ico">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/><path d="M19 8v6M22 11h-6" stroke-linecap="round"/></svg>
+    <div class="join-wrap">
+        <div class="join-head">
+            <div class="join-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/><path d="M19 8v6M22 11h-6" stroke-linecap="round"/></svg>
+            </div>
+            <h1>회원가입</h1>
+            <p>가입 유형을 선택해 주세요. 가입 후에도 문의로 변경하실 수 있습니다.</p>
         </div>
-        <h1>회원가입</h1>
-        <p class="sub">가입 유형을 선택해 주세요.</p>
 
         <div class="join-pick">
             <a href="{{ route('register') }}" class="join-card">
-                <div class="jc-ico">👤</div>
-                <h2>일반 회원가입</h2>
-                <p>개인 구매 고객용입니다. 바로 가입하고 주문할 수 있습니다.</p>
-                <span class="jc-go">일반 회원으로 가입 →</span>
+                <div class="jc-top">
+                    <div class="jc-ico">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.3 3.1-5.4 7-5.4s7 2.1 7 5.4"/></svg>
+                    </div>
+                    <div>
+                        <h2>일반 회원가입</h2>
+                    </div>
+                </div>
+                <p class="jc-desc">개인 구매 고객을 위한 가입입니다. 바로 가입하고 주문하실 수 있습니다.</p>
+                <ul class="jc-list">
+                    <li>가입 즉시 주문 가능</li>
+                    <li>주문·배송 조회</li>
+                    <li>배송지 저장으로 간편 주문</li>
+                </ul>
+                <span class="jc-go">
+                    일반 회원으로 가입
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </span>
             </a>
-            <a href="{{ route('partner.register') }}" class="join-card">
-                <div class="jc-ico">🏢</div>
-                <h2>협력사 회원가입</h2>
-                <p>사업자 거래처용입니다. 사업자등록증 확인 후 승인되면 <b>협력사 할인가</b>로 구매할 수 있습니다.</p>
-                <span class="jc-go">협력사로 가입 →</span>
+
+            <a href="{{ route('partner.register') }}" class="join-card is-partner">
+                <div class="jc-top">
+                    <div class="jc-ico">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 21h18M5 21V8l7-4 7 4v13"/><path d="M10 21v-5h4v5"/></svg>
+                    </div>
+                    <div>
+                        <h2>협력사 회원가입</h2>
+                        <span class="jc-tag">협력사 할인가 적용</span>
+                    </div>
+                </div>
+                <p class="jc-desc">사업자 거래처를 위한 가입입니다. 사업자등록증 확인 후 승인해 드립니다.</p>
+                <ul class="jc-list">
+                    <li>승인 후 <b>협력사 전용 할인가</b>로 구매</li>
+                    <li>사업자등록증 확인 후 승인 (영업일 기준 확인)</li>
+                    <li>대량·정기 구매 거래처에 적합</li>
+                </ul>
+                <span class="jc-go">
+                    협력사로 가입 신청
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </span>
             </a>
         </div>
 
-        <div class="alt">이미 계정이 있으신가요? <a href="{{ route('login') }}">로그인</a></div>
+        <div class="join-foot">
+            이미 계정이 있으신가요? <a href="{{ route('login') }}">로그인</a>
+        </div>
     </div>
 </div>
-
-@push('styles')
-<style>
-    .join-pick{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:8px 0 20px}
-    .join-card{display:block;padding:24px 20px;border:1px solid #e3e6ee;border-radius:14px;background:#fff;text-decoration:none;color:inherit;transition:border-color .15s,box-shadow .15s}
-    .join-card:hover{border-color:var(--accent);box-shadow:0 6px 20px rgba(0,0,0,.06)}
-    .join-card .jc-ico{font-size:30px;margin-bottom:10px}
-    .join-card h2{margin:0 0 8px;font-size:17px}
-    .join-card p{margin:0 0 14px;font-size:13.5px;color:#6b7280;line-height:1.6}
-    .join-card .jc-go{font-weight:700;color:var(--accent);font-size:13.5px}
-    @media (max-width:640px){ .join-pick{grid-template-columns:1fr} }
-</style>
-@endpush
 @endsection

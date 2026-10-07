@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\ErrorLogController as AdminErrorLog;
 use App\Http\Controllers\Admin\MemberController as AdminMember;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerAuthController;
+use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\InquiryController;
 use App\Http\Controllers\PartnerRegisterController;
 use App\Http\Controllers\PasswordResetController;
@@ -66,6 +67,10 @@ Route::post('/login', [CustomerAuthController::class, 'login'])->name('login.pos
 Route::get('/join', [CustomerAuthController::class, 'showJoinChoice'])->name('join');
 Route::get('/register', [CustomerAuthController::class, 'showRegister'])->name('register');
 Route::post('/register', [CustomerAuthController::class, 'register'])->name('register.post');
+Route::post('/email/verify/send', [EmailVerificationController::class, 'send'])
+    ->middleware('throttle:8,1')->name('email.verify.send');
+Route::post('/email/verify/confirm', [EmailVerificationController::class, 'confirm'])
+    ->middleware('throttle:20,1')->name('email.verify.confirm');
 Route::get('/register/partner', [PartnerRegisterController::class, 'show'])->name('partner.register');
 Route::post('/register/partner', [PartnerRegisterController::class, 'register'])->name('partner.register.post');
 Route::post('/logout', [CustomerAuthController::class, 'logout'])->name('logout');
