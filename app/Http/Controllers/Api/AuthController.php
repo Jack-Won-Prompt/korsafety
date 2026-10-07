@@ -49,8 +49,8 @@ class AuthController extends Controller
             ]);
         }
 
-        if ($user->isSuspended()) {
-            throw ValidationException::withMessages(['email' => ['이용이 정지된 계정입니다. 고객센터로 문의해 주세요.']]);
+        if ($reason = $user->loginBlockReason()) {
+            throw ValidationException::withMessages(['email' => [$reason]]);
         }
 
         // 판매점 / 협력사 승인 상태 확인

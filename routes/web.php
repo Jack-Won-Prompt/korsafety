@@ -14,11 +14,13 @@ use App\Http\Controllers\Admin\OrderStatementController as AdminStatement;
 use App\Http\Controllers\Admin\TaxInvoiceController as AdminTaxInvoice;
 use App\Http\Controllers\Admin\VisitLogController as AdminVisitLog;
 use App\Http\Controllers\Admin\ErrorLogController as AdminErrorLog;
+use App\Http\Controllers\Admin\InvitationController as AdminInvitation;
 use App\Http\Controllers\Admin\MemberController as AdminMember;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\InquiryController;
+use App\Http\Controllers\InviteRegisterController;
 use App\Http\Controllers\PartnerRegisterController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PolicyController;
@@ -71,6 +73,9 @@ Route::post('/email/verify/send', [EmailVerificationController::class, 'send'])
     ->middleware('throttle:8,1')->name('email.verify.send');
 Route::post('/email/verify/confirm', [EmailVerificationController::class, 'confirm'])
     ->middleware('throttle:20,1')->name('email.verify.confirm');
+// 초대 링크로 가입
+Route::get('/invite/{token}', [InviteRegisterController::class, 'show'])->name('invite.show');
+Route::post('/invite/{token}', [InviteRegisterController::class, 'register'])->name('invite.register');
 Route::get('/register/partner', [PartnerRegisterController::class, 'show'])->name('partner.register');
 Route::post('/register/partner', [PartnerRegisterController::class, 'register'])->name('partner.register.post');
 Route::post('/logout', [CustomerAuthController::class, 'logout'])->name('logout');
@@ -121,8 +126,17 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
     Route::post('cashbacks/{order}/pay', [AdminController::class, 'payCashback'])->name('admin.cashbacks.pay');
     Route::get('login-logs', [AdminController::class, 'loginLogs'])->name('admin.login-logs');
 
+    // 회원 초대
+    Route::get('invitations', [AdminInvitation::class, 'index'])->name('admin.invitations');
+    Route::post('invitations', [AdminInvitation::class, 'store'])->name('admin.invitations.store');
+    Route::post('invitations/import', [AdminInvitation::class, 'import'])->name('admin.invitations.import');
+    Route::get('invitations/template', [AdminInvitation::class, 'template'])->name('admin.invitations.template');
+    Route::post('invitations/{invitation}/resend', [AdminInvitation::class, 'resend'])->name('admin.invitations.resend');
+    Route::post('invitations/{invitation}/cancel', [AdminInvitation::class, 'cancel'])->name('admin.invitations.cancel');
+
     // 회원 관리
     Route::get('members', [AdminMember::class, 'index'])->name('admin.members');
+    Route::post('members/{member}/approval', [AdminMember::class, 'approval'])->name('admin.members.approval');
     Route::get('members/partner/{profile}/license', [PartnerRegisterController::class, 'license'])->name('admin.members.license');
     Route::post('members/partner/{profile}/status', [AdminMember::class, 'partnerStatus'])->name('admin.members.partner-status');
     Route::get('members/{member}', [AdminMember::class, 'show'])->name('admin.members.show');

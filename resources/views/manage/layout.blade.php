@@ -12,8 +12,10 @@
         try { $inquiryUnread = (int) \App\Models\Inquiry::sum('unread_admin'); } catch (\Throwable $e) {}
     }
     $errorOpen = 0;
+    $approvalWaiting = 0;
     if ($isHq) {
         try { $errorOpen = (int) \App\Models\ErrorLog::where('status', 'unresolved')->count(); } catch (\Throwable $e) {}
+        try { $approvalWaiting = (int) \App\Models\User::where('approval_status', 'pending')->count(); } catch (\Throwable $e) {}
     }
     // 상단 SR 배지 — 본사는 미처리 전체, 그 외 역할은 본인 미종료 건
     $srOpen = \App\Http\Controllers\Manage\ServiceRequestController::badgeCount($u);
@@ -61,6 +63,7 @@
             @if($isHq)
                 <a href="{{ route('admin.index') }}" class="{{ request()->routeIs('admin.index') ? 'active' : '' }}">{!! $ic($navDash) !!} 대시보드</a>
                 <a href="{{ route('admin.members') }}" class="{{ request()->routeIs('admin.members*') ? 'active' : '' }}">{!! $ic('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/>') !!} 회원 관리</a>
+                <a href="{{ route('admin.invitations') }}" class="{{ request()->routeIs('admin.invitations*') ? 'active' : '' }}">{!! $ic('<path d="M4 6h16v12H4z"/><path d="M4 7l8 6 8-6"/>') !!} 회원 초대 @if($approvalWaiting)<span class="nav-badge">{{ $approvalWaiting > 99 ? '99+' : $approvalWaiting }}</span>@endif</a>
                 <a href="{{ route('admin.sellers') }}" class="{{ request()->routeIs('admin.sellers') ? 'active' : '' }}">{!! $ic($navUsers) !!} 판매점 관리</a>
                 <a href="{{ route('admin.agents') }}" class="{{ request()->routeIs('admin.agents') ? 'active' : '' }}">{!! $ic($navBiz) !!} 협력사 관리</a>
                 <a href="{{ route('admin.commissions') }}" class="{{ request()->routeIs('admin.commissions') ? 'active' : '' }}">{!! $ic($navCoin) !!} 커미션 정산</a>

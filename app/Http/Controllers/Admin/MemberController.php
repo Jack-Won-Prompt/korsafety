@@ -25,7 +25,13 @@ class MemberController extends Controller
 
     public function index(Request $request)
     {
-        $role = $request->query('role', 'customer');
+        $approval = $request->query('approval');    // pending | approved | rejected
+        if ($approval && ! in_array($approval, ['pending', 'approved', 'rejected'], true)) {
+            $approval = null;
+        }
+
+        // 승인 상태로 볼 때는 구분(일반·협력사 등)과 상관없이 모두 보여준다
+        $role = $approval ? 'all' : $request->query('role', 'customer');
         if ($role !== 'all' && ! isset(self::ROLES[$role])) {
             $role = 'customer';
         }
@@ -50,6 +56,9 @@ class MemberController extends Controller
             'active' => $query->whereNull('suspended_at'),
             default => null,
         };
+        if ($approval) {
+            $query->where('approval_status', $approval);
+        }
         if ($q !== '') {
             $query->where(fn ($w) => $w->where('name', 'like', "%$q%")->orWhere('email', 'like', "%$q%"));
         }
@@ -70,12 +79,38 @@ class MemberController extends Controller
             'week' => User::where('created_at', '>=', today()->subDays(6))->count(),
             'suspended' => User::whereNotNull('suspended_at')->count(),
             'partner_pending' => PartnerProfile::where('status', 'pending')->count(),
+            'approval_pending' => User::where('approval_status', 'pending')->count(),
         ];
         foreach (array_keys(self::ROLES) as $r) {
             $stats[$r] = (int) ($byRole[$r] ?? 0);
         }
 
-        return view('admin.members.index', compact('members', 'stats', 'role', 'state', 'q', 'from', 'to'));
+        return view('admin.members.index', compact('members', 'stats', 'role', 'state', 'approval', 'q', 'from', 'to'));
+    }
+
+    /** 가입 승인 · 반려 — 초대로 가입한 회원은 승인해야 로그인할 수 있다 */
+    public function approval(Request $request, User $member)
+    {
+        $data = $request->validate([
+            'approval_status' => 'required|in:pending,approved,rejected',
+        ], [], ['approval_status' => '가입 승인 상태']);
+
+        $member->update([
+            'approval_status' => $data['approval_status'],
+            'approved_at' => $data['approval_status'] === 'approved' ? now() : null,
+            'approved_by' => $data['approval_status'] === 'approved' ? auth()->id() : null,
+        ]);
+
+        // 협력사 회원을 승인하면 할인가도 함께 적용되도록 사업자 정보까지 승인한다
+        if ($data['approval_status'] === 'approved' && $member->partnerProfile && $member->partnerProfile->status === 'pending') {
+            $member->partnerProfile->update([
+                'status' => 'approved', 'approved_at' => now(), 'approved_by' => auth()->id(),
+            ]);
+        }
+
+        $label = ['pending' => '승인 대기', 'approved' => '승인 완료', 'rejected' => '반려'][$data['approval_status']];
+
+        return back()->with('status', $member->name.' 회원을 "'.$label.'" 상태로 바꿨습니다.');
     }
 
     /** 협력사 회원 승인 · 반려 — 승인해야 협력사 할인가가 적용된다 */

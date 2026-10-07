@@ -1,7 +1,10 @@
 @extends('manage.layout')
 @section('title', '회원 관리')
 @section('page', '회원 관리')
-@section('crumb', '가입 회원 조회 · 비밀번호 재설정 안내 · 이용 정지')
+@section('crumb', '가입 회원 조회 · 가입 승인 · 비밀번호 재설정 안내 · 이용 정지')
+@section('actions')
+    <a href="{{ route('admin.invitations') }}" class="btn btn-accent btn-sm">+ 회원 초대</a>
+@endsection
 
 @push('styles')
 <style>
@@ -35,6 +38,11 @@
         <div class="val">{{ number_format($stats['seller'] + $stats['agent'] + $stats['purchaser']) }}<span class="won"> 명</span></div>
         <div class="sub">판매점 {{ $stats['seller'] }} · 협력사 {{ $stats['agent'] }} · 구매대행 {{ $stats['purchaser'] }}</div>
     </div>
+    <a href="{{ route('admin.members', ['approval' => 'pending']) }}" class="tile" style="{{ $approval === 'pending' ? 'border-color:var(--accent)' : '' }}">
+        <div class="lab">가입 승인 대기</div>
+        <div class="val" style="{{ $stats['approval_pending'] ? 'color:#c11c0f' : '' }}">{{ number_format($stats['approval_pending']) }}<span class="won"> 명</span></div>
+        <div class="sub">승인해야 로그인할 수 있습니다</div>
+    </a>
     <div class="tile">
         <div class="lab">협력사 승인 대기</div>
         <div class="val" style="{{ $stats['partner_pending'] ? 'color:#a35a06' : '' }}">{{ number_format($stats['partner_pending']) }}<span class="won"> 건</span></div>
@@ -44,9 +52,10 @@
 
 <div class="mb-tabs">
     @foreach(\App\Http\Controllers\Admin\MemberController::ROLES as $k => $v)
-        <a href="{{ $tabUrl($k) }}" class="{{ $role === $k ? 'on' : '' }}">{{ $v }}<b>{{ number_format($stats[$k] ?? 0) }}</b></a>
+        <a href="{{ $tabUrl($k) }}" class="{{ ! $approval && $role === $k ? 'on' : '' }}">{{ $v }}<b>{{ number_format($stats[$k] ?? 0) }}</b></a>
     @endforeach
-    <a href="{{ $tabUrl('all') }}" class="{{ $role === 'all' ? 'on' : '' }}">전체<b>{{ number_format($stats['all']) }}</b></a>
+    <a href="{{ $tabUrl('all') }}" class="{{ ! $approval && $role === 'all' ? 'on' : '' }}">전체<b>{{ number_format($stats['all']) }}</b></a>
+    <a href="{{ route('admin.members', ['approval' => 'pending']) }}" class="{{ $approval === 'pending' ? 'on' : '' }}">승인 대기<b>{{ number_format($stats['approval_pending']) }}</b></a>
 </div>
 
 {{-- 검색 --}}
@@ -104,6 +113,11 @@
                     @else
                         <span class="badge ok">이용중</span>
                     @endif
+                    @if($m->approval_status === 'pending')
+                        <div style="margin-top:4px"><span class="badge warn">승인 대기</span></div>
+                    @elseif($m->approval_status === 'rejected')
+                        <div style="margin-top:4px"><span class="badge off">가입 반려</span></div>
+                    @endif
                     @if($m->partnerProfile)
                         <div style="margin-top:4px"><span class="badge {{ $m->partnerProfile->status_badge }}">{{ $m->partnerProfile->status_label }}</span></div>
                     @endif
@@ -111,6 +125,18 @@
                 <td>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">
                         <a href="{{ route('admin.members.show', $m) }}" class="btn btn-sm">상세</a>
+                        @if($m->approval_status === 'pending')
+                            <form method="post" action="{{ route('admin.members.approval', $m) }}"
+                                  onsubmit="return confirm('이 회원의 가입을 승인할까요? 승인하면 로그인할 수 있습니다.')">@csrf
+                                <input type="hidden" name="approval_status" value="approved">
+                                <button class="btn btn-sm btn-accent">가입 승인</button>
+                            </form>
+                            <form method="post" action="{{ route('admin.members.approval', $m) }}"
+                                  onsubmit="return confirm('가입을 반려할까요?')">@csrf
+                                <input type="hidden" name="approval_status" value="rejected">
+                                <button class="btn btn-sm btn-danger">반려</button>
+                            </form>
+                        @endif
                         <form method="post" action="{{ route('admin.members.reset-link', $m) }}"
                               onsubmit="return confirm('{{ $m->email }} 로 비밀번호 재설정 링크를 보낼까요?')">@csrf
                             <button class="btn btn-sm">비밀번호 재설정</button>

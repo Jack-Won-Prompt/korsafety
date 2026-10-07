@@ -56,8 +56,8 @@ class AuthController extends Controller
 
         $user = Auth::user();
 
-        if ($user->isSuspended()) {
-            return $this->fail($request, '이용이 정지된 계정입니다. 본사에 문의해 주세요.', $user);
+        if ($reason = $user->loginBlockReason()) {
+            return $this->fail($request, $reason, $user);
         }
 
         if ($user->isHqAdmin()) {

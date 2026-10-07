@@ -901,3 +901,10 @@ h1,h2,h3,h4 { margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height:
 .acct button[type="submit"]:disabled { opacity: .45; cursor: not-allowed; }
 .acct .verify-timer { align-self: center; min-width: 46px; text-align: center; font-size: 13px;
   font-weight: 800; color: var(--accent-d); }
+
+/* 초대 가입 안내 박스 */
+.acct .invite-box { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 16px 18px; background: var(--bg-soft); border: 1px solid var(--line);
+  border-radius: 12px; margin-bottom: 22px; font-size: 14.5px; }
+.acct .invite-box .invite-label { font-size: 12.5px; color: var(--muted); font-weight: 700; }
+.acct .invite-box .badge { margin-left: auto; }

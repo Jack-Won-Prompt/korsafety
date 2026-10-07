@@ -47,6 +47,28 @@
         <dl class="mb-dl">
             <dt>구분</dt><dd>{{ \App\Http\Controllers\Admin\MemberController::ROLES[$member->role] ?? ($member->role ?: '일반 회원') }}</dd>
             <dt>가입일</dt><dd>{{ optional($member->created_at)->format('Y.m.d H:i') }}</dd>
+            <dt>가입 승인</dt>
+            <dd>
+                @if($member->approval_status === 'pending')
+                    <span class="badge warn">승인 대기</span>
+                @elseif($member->approval_status === 'approved')
+                    <span class="badge ok">승인 완료</span>{{ $member->approved_at ? ' · '.$member->approved_at->format('Y.m.d H:i') : '' }}
+                @elseif($member->approval_status === 'rejected')
+                    <span class="badge off">반려</span>
+                @else
+                    <span class="t-sub">승인 절차 없이 가입</span>
+                @endif
+                @if($member->approval_status !== 'none')
+                    <form method="post" action="{{ route('admin.members.approval', $member) }}" style="display:inline-flex;gap:6px;margin-left:8px">@csrf
+                        <select class="input" name="approval_status" style="height:32px;width:120px;font-size:12.5px">
+                            <option value="pending" @selected($member->approval_status === 'pending')>승인 대기</option>
+                            <option value="approved" @selected($member->approval_status === 'approved')>승인 완료</option>
+                            <option value="rejected" @selected($member->approval_status === 'rejected')>반려</option>
+                        </select>
+                        <button class="btn btn-sm">저장</button>
+                    </form>
+                @endif
+            </dd>
             <dt>휴대전화</dt><dd>{{ $member->phone ?: '-' }}</dd>
             <dt>주소</dt><dd>{{ trim(($member->postcode ? '('.$member->postcode.') ' : '').$member->address1.' '.$member->address2) ?: '-' }}</dd>
             @if($member->suspended_at)

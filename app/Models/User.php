@@ -23,6 +23,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name', 'email', 'password', 'role', 'seller_id', 'agent_id', 'purchaser_id', 'suspended_at',
         'phone', 'postcode', 'address1', 'address2',
+        'approval_status', 'approved_at', 'approved_by',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -33,6 +34,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'suspended_at' => 'datetime',
+            'approved_at' => 'datetime',
         ];
     }
 
@@ -62,6 +64,34 @@ class User extends Authenticatable
     public function isSuspended(): bool
     {
         return $this->suspended_at !== null;
+    }
+
+    /** 가입 승인을 기다리는 중인가 (초대로 가입한 회원) */
+    public function awaitingApproval(): bool
+    {
+        return $this->approval_status === 'pending';
+    }
+
+    /** 가입이 반려된 계정인가 */
+    public function isRejected(): bool
+    {
+        return $this->approval_status === 'rejected';
+    }
+
+    /** 로그인할 수 없는 이유 — 없으면 null */
+    public function loginBlockReason(): ?string
+    {
+        if ($this->isSuspended()) {
+            return '이용이 정지된 계정입니다. 고객센터로 문의해 주세요.';
+        }
+        if ($this->awaitingApproval()) {
+            return '가입 승인을 기다리는 중입니다. 승인 후 이용하실 수 있습니다.';
+        }
+        if ($this->isRejected()) {
+            return '가입이 승인되지 않은 계정입니다. 고객센터로 문의해 주세요.';
+        }
+
+        return null;
     }
 
     public function seller(): BelongsTo

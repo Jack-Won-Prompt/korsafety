@@ -30,12 +30,12 @@ class CustomerAuthController extends Controller
 
         $user = Auth::user();
 
-        if ($user->isSuspended()) {
+        if ($reason = $user->loginBlockReason()) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return back()->withErrors(['email' => '이용이 정지된 계정입니다. 고객센터로 문의해 주세요.'])->withInput();
+            return back()->withErrors(['email' => $reason])->withInput();
         }
 
         $request->session()->regenerate();
