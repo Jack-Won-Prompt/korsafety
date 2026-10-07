@@ -59,13 +59,24 @@
         </form>
 
         <div style="margin-top:18px;padding-top:18px;border-top:1px solid #eef0f4">
+            <div style="font-weight:700;font-size:14px;margin-bottom:10px">엑셀 명단으로 일괄 초대</div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+                <a href="{{ route('admin.invitations.template') }}" class="btn btn-sm btn-accent">① 엑셀 양식 내려받기</a>
+                <span class="t-sub">양식을 받아 <b>이메일 · 이름 · 회사명 · 구분(일반/협력사)</b>을 채운 뒤, 아래에서 올려 주세요.</span>
+            </div>
+
             <form method="post" action="{{ route('admin.invitations.import') }}" enctype="multipart/form-data"
                   style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">@csrf
-                <div style="font-weight:700;font-size:14px">엑셀 명단으로 일괄 초대</div>
+                <span class="t-sub" style="font-weight:700">② 작성한 명단</span>
                 <input class="input" type="file" name="file" accept=".csv,.txt" required style="height:38px;flex:1 1 260px;padding:7px 10px">
                 <button class="btn btn-sm">명단 올려서 보내기</button>
-                <span class="t-sub">양식: 이메일 · 이름 · 회사명 · 구분(일반/협력사) — 위 "엑셀 양식"을 받아 사용하세요</span>
             </form>
+
+            <div class="t-sub" style="margin-top:10px;line-height:1.6">
+                · 엑셀에서 수정한 뒤 <b>CSV(쉼표로 분리)</b> 형식으로 저장해 올려 주세요.<br>
+                · 이미 가입한 이메일이나 형식이 틀린 줄은 건너뛰고, 건너뛴 사유를 알려드립니다.
+            </div>
         </div>
     </div>
 </div>
