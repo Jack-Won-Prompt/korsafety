@@ -4,6 +4,7 @@
 
 @section('content')
 @include('partials.address-finder')
+@include('partials.file-pick')
 @php $isPartner = $invitation->role === 'partner'; @endphp
 
 <div class="wrap">
@@ -79,7 +80,14 @@
             @if($isPartner)
                 <div class="field">
                     <label>사업자등록증 <span class="req">*</span></label>
-                    <input type="file" name="license" accept=".jpg,.jpeg,.png,.webp,.pdf">
+                <div class="file-pick" data-file-pick>
+                    <input type="file" id="license" name="license" accept=".jpg,.jpeg,.png,.webp,.pdf">
+                    <label for="license" class="file-pick-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v12"/></svg>
+                        파일 선택
+                    </label>
+                    <span class="file-pick-name" data-file-name data-empty="선택된 파일이 없습니다">선택된 파일이 없습니다</span>
+                </div>
                     <div class="hint">JPG · PNG · WEBP · PDF, 8MB 이하. 본사 담당자만 확인하며 외부에 공개되지 않습니다.</div>
                 </div>
             @endif
