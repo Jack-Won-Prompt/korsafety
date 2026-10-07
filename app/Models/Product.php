@@ -168,27 +168,31 @@ class Product extends Model
      */
     public function showsBothPrices(): bool
     {
-        static $isManager = null;
+        // 판정은 보는 사람(계정)마다 달라지므로 계정별로 기억한다
+        static $byUser = [];
 
-        if ($isManager === null) {
-            $user = auth()->user();
-            $isManager = (bool) ($user && method_exists($user, 'isHqAdmin') && ($user->isHqAdmin() || $user->isSeller()));
+        $user = auth()->user();
+        $key = $user?->id ?? 0;
+        if (! array_key_exists($key, $byUser)) {
+            $byUser[$key] = (bool) ($user && method_exists($user, 'isHqAdmin') && ($user->isHqAdmin() || $user->isSeller()));
         }
 
-        return $isManager && $this->partner_price !== null;
+        return $byUser[$key] && $this->partner_price !== null;
     }
 
     /** 지금 보고 있는 사람이 승인된 협력사 회원인가 */
     public function partnerPriceApplies(): bool
     {
-        static $cached = null;
+        // 상품마다 회원 정보를 다시 조회하지 않도록 계정별로 기억한다
+        static $byUser = [];
 
-        if ($cached === null) {
-            $user = auth()->user();
-            $cached = (bool) ($user && method_exists($user, 'isApprovedPartner') && $user->isApprovedPartner());
+        $user = auth()->user();
+        $key = $user?->id ?? 0;
+        if (! array_key_exists($key, $byUser)) {
+            $byUser[$key] = (bool) ($user && method_exists($user, 'isApprovedPartner') && $user->isApprovedPartner());
         }
 
-        return $cached;
+        return $byUser[$key];
     }
 
     public function getHasDiscountAttribute(): bool
