@@ -65,6 +65,7 @@
                             <option value="approved" @selected($member->approval_status === 'approved')>승인 완료</option>
                             <option value="rejected" @selected($member->approval_status === 'rejected')>반려</option>
                         </select>
+                        <input class="input" name="reason" placeholder="반려 사유 (반려일 때만)" style="height:32px;width:220px;font-size:12.5px">
                         <button class="btn btn-sm">저장</button>
                     </form>
                 @endif

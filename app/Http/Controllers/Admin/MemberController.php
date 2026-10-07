@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\MemberApprovalMail;
 use App\Models\LoginLog;
 use App\Models\Order;
 use App\Models\PartnerProfile;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
 
 /** 회원 관리 — 가입 회원 조회 · 비밀번호 재설정 안내 · 이용 정지 (본사 전용) */
@@ -93,7 +95,8 @@ class MemberController extends Controller
     {
         $data = $request->validate([
             'approval_status' => 'required|in:pending,approved,rejected',
-        ], [], ['approval_status' => '가입 승인 상태']);
+            'reason' => 'nullable|string|max:300',
+        ], [], ['approval_status' => '가입 승인 상태', 'reason' => '사유']);
 
         $member->update([
             'approval_status' => $data['approval_status'],
@@ -110,12 +113,25 @@ class MemberController extends Controller
 
         $label = ['pending' => '승인 대기', 'approved' => '승인 완료', 'rejected' => '반려'][$data['approval_status']];
 
-        return back()->with('status', $member->name.' 회원을 "'.$label.'" 상태로 바꿨습니다.');
+        // 승인·반려 결과를 회원에게 메일로 알린다 (메일 실패가 처리 자체를 막지 않도록)
+        $mailed = '';
+        if (in_array($data['approval_status'], ['approved', 'rejected'], true)) {
+            try {
+                Mail::to($member->email)->send(new MemberApprovalMail($member, $data['approval_status'], $data['reason'] ?? null));
+                $mailed = ' 안내 메일을 보냈습니다.';
+            } catch (\Throwable $e) {
+                report($e);
+                $mailed = ' (안내 메일 발송에는 실패했습니다)';
+            }
+        }
+
+        return back()->with('status', $member->name.' 회원을 "'.$label.'" 상태로 바꿨습니다.'.$mailed);
     }
 
     /** 협력사 회원 승인 · 반려 — 승인해야 협력사 할인가가 적용된다 */
     public function partnerStatus(Request $request, PartnerProfile $profile)
     {
+        $profile->loadMissing('user');
         $data = $request->validate([
             'status' => 'required|in:pending,approved,rejected',
             'reject_reason' => 'nullable|string|max:300',
@@ -128,7 +144,20 @@ class MemberController extends Controller
             'reject_reason' => $data['status'] === 'rejected' ? ($data['reject_reason'] ?? null) : null,
         ]);
 
-        return back()->with('status', $profile->company_name.' 협력사를 "'.PartnerProfile::STATUSES[$data['status']].'" 상태로 바꿨습니다.');
+        $mailed = '';
+        if (in_array($data['status'], ['approved', 'rejected'], true) && $profile->user) {
+            try {
+                Mail::to($profile->user->email)->send(
+                    new MemberApprovalMail($profile->user, $data['status'], $data['reject_reason'] ?? null)
+                );
+                $mailed = ' 안내 메일을 보냈습니다.';
+            } catch (\Throwable $e) {
+                report($e);
+                $mailed = ' (안내 메일 발송에는 실패했습니다)';
+            }
+        }
+
+        return back()->with('status', $profile->company_name.' 협력사를 "'.PartnerProfile::STATUSES[$data['status']].'" 상태로 바꿨습니다.'.$mailed);
     }
 
     public function show(User $member)
