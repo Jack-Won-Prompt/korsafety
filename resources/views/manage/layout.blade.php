@@ -60,6 +60,7 @@
             @endphp
             @if($isHq)
                 <a href="{{ route('admin.index') }}" class="{{ request()->routeIs('admin.index') ? 'active' : '' }}">{!! $ic($navDash) !!} 대시보드</a>
+                <a href="{{ route('admin.members') }}" class="{{ request()->routeIs('admin.members*') ? 'active' : '' }}">{!! $ic('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/>') !!} 회원 관리</a>
                 <a href="{{ route('admin.sellers') }}" class="{{ request()->routeIs('admin.sellers') ? 'active' : '' }}">{!! $ic($navUsers) !!} 판매점 관리</a>
                 <a href="{{ route('admin.agents') }}" class="{{ request()->routeIs('admin.agents') ? 'active' : '' }}">{!! $ic($navBiz) !!} 협력사 관리</a>
                 <a href="{{ route('admin.commissions') }}" class="{{ request()->routeIs('admin.commissions') ? 'active' : '' }}">{!! $ic($navCoin) !!} 커미션 정산</a>

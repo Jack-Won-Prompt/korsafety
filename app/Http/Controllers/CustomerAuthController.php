@@ -27,8 +27,17 @@ class CustomerAuthController extends Controller
             return back()->withErrors(['email' => '이메일 또는 비밀번호가 올바르지 않습니다.'])->withInput();
         }
 
-        $request->session()->regenerate();
         $user = Auth::user();
+
+        if ($user->isSuspended()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors(['email' => '이용이 정지된 계정입니다. 고객센터로 문의해 주세요.'])->withInput();
+        }
+
+        $request->session()->regenerate();
 
         // 관리 계정이면 각 콘솔로, 고객이면 쇼핑몰로
         if ($user->isHqAdmin()) return redirect()->route('admin.index');

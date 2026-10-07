@@ -56,6 +56,10 @@ class AuthController extends Controller
 
         $user = Auth::user();
 
+        if ($user->isSuspended()) {
+            return $this->fail($request, '이용이 정지된 계정입니다. 본사에 문의해 주세요.', $user);
+        }
+
         if ($user->isHqAdmin()) {
             $this->record($request, $user, $user->email, 'success');
             $request->session()->regenerate();

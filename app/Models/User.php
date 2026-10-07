@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -19,7 +20,7 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'email', 'password', 'role', 'seller_id', 'agent_id', 'purchaser_id'];
+    protected $fillable = ['name', 'email', 'password', 'role', 'seller_id', 'agent_id', 'purchaser_id', 'suspended_at'];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -28,7 +29,19 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'suspended_at' => 'datetime',
         ];
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    /** 이용 정지된 계정 — 웹·앱 어디서도 로그인할 수 없다 */
+    public function isSuspended(): bool
+    {
+        return $this->suspended_at !== null;
     }
 
     public function seller(): BelongsTo

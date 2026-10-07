@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\OrderStatementController as AdminStatement;
 use App\Http\Controllers\Admin\TaxInvoiceController as AdminTaxInvoice;
 use App\Http\Controllers\Admin\VisitLogController as AdminVisitLog;
 use App\Http\Controllers\Admin\ErrorLogController as AdminErrorLog;
+use App\Http\Controllers\Admin\MemberController as AdminMember;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\InquiryController;
@@ -110,6 +111,13 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
     Route::get('cashbacks', [AdminController::class, 'cashbacks'])->name('admin.cashbacks');
     Route::post('cashbacks/{order}/pay', [AdminController::class, 'payCashback'])->name('admin.cashbacks.pay');
     Route::get('login-logs', [AdminController::class, 'loginLogs'])->name('admin.login-logs');
+
+    // 회원 관리
+    Route::get('members', [AdminMember::class, 'index'])->name('admin.members');
+    Route::get('members/{member}', [AdminMember::class, 'show'])->name('admin.members.show');
+    Route::post('members/{member}/reset-link', [AdminMember::class, 'sendReset'])->name('admin.members.reset-link');
+    Route::post('members/{member}/suspend', [AdminMember::class, 'toggleSuspend'])->name('admin.members.suspend');
+    Route::delete('members/{member}', [AdminMember::class, 'destroy'])->name('admin.members.destroy');
     // 홈 베스트 셀러 진열
     Route::get('best-sellers', [AdminBestSeller::class, 'index'])->name('admin.bestsellers');
     Route::post('best-sellers/add', [AdminBestSeller::class, 'add'])->name('admin.bestsellers.add');

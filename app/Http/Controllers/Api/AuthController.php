@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
@@ -48,6 +49,10 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->isSuspended()) {
+            throw ValidationException::withMessages(['email' => ['이용이 정지된 계정입니다. 고객센터로 문의해 주세요.']]);
+        }
+
         // 판매점 / 협력사 승인 상태 확인
         if ($user->role === 'seller' && (! $user->seller || $user->seller->status !== 'approved')) {
             throw ValidationException::withMessages(['email' => ['판매점 승인이 완료되지 않았거나 정지된 계정입니다.']]);
@@ -60,6 +65,21 @@ class AuthController extends Controller
         }
 
         return $this->tokenResponse($user, $request);
+    }
+
+    /**
+     * 비밀번호 찾기 — 가입 이메일로 재설정 링크를 보낸다.
+     * 계정이 있는지 알려주지 않도록 결과 메시지는 항상 같다.
+     */
+    public function forgotPassword(Request $request)
+    {
+        $data = $request->validate(['email' => 'required|email'], [], ['email' => '이메일']);
+
+        PasswordBroker::sendResetLink(['email' => $data['email']]);
+
+        return response()->json([
+            'message' => '가입된 이메일이라면 비밀번호 재설정 링크를 보냈습니다. 메일함을 확인해 주세요.',
+        ]);
     }
 
     /** 현재 사용자 */

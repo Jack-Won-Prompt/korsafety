@@ -53,7 +53,11 @@ class PasswordResetController extends Controller
         );
 
         if ($status === Password::PASSWORD_RESET) {
-            return redirect()->route('login')->with('status', '비밀번호가 변경되었습니다. 새 비밀번호로 로그인해 주세요.');
+            // 관리·판매점 계정은 관리 로그인 화면으로 보낸다
+            $user = \App\Models\User::where('email', $request->input('email'))->first();
+            $route = ($user && ! $user->isCustomer()) ? 'manage.login' : 'login';
+
+            return redirect()->route($route)->with('status', '비밀번호가 변경되었습니다. 새 비밀번호로 로그인해 주세요.');
         }
         return back()->withErrors(['email' => '재설정에 실패했습니다. 링크가 만료되었거나 이메일이 올바르지 않습니다.'])->withInput($request->only('email'));
     }
