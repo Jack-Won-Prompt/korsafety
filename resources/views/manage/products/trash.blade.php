@@ -42,7 +42,11 @@
                 <td>
                     <span class="t-name">{{ \Illuminate\Support\Str::limit($p->name, 42) }}</span>
                     <div class="t-sub">
-                        상품ID {{ $p->id }}@if($p->product_code) · <b class="pcode">{{ $p->product_code }}</b>@endif@if($p->sku) · SKU {{ $p->sku }}@endif@if($p->brand) · {{ $p->brand }}@endif
+                        {{-- 지시문을 붙여 쓰면(@endif@if) Blade가 뒤 지시문을 글자로 남겨 화면이 깨진다 --}}
+                        상품ID {{ $p->id }}
+                        @if($p->product_code) · <b class="pcode">{{ $p->product_code }}</b> @endif
+                        @if($p->sku) · SKU {{ $p->sku }} @endif
+                        @if($p->brand) · {{ $p->brand }} @endif
                     </div>
                 </td>
                 <td class="t-sub">{{ $p->category->name ?? '-' }}</td>
