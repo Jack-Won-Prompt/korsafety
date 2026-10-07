@@ -58,6 +58,15 @@ class CustomerAuthController extends Controller
         return redirect()->route('login')->withErrors(['email' => '현재 회원가입을 받고 있지 않습니다. 문의는 고객센터로 연락해 주세요.']);
     }
 
+    /** 가입 유형 선택 — 일반 회원 / 협력사 회원 */
+    public function showJoinChoice()
+    {
+        if ($stop = $this->signupClosed()) return $stop;
+        if (Auth::check()) return redirect()->route('home');
+
+        return view('auth.register-choice');
+    }
+
     public function showRegister()
     {
         if ($stop = $this->signupClosed()) return $stop;
@@ -72,12 +81,23 @@ class CustomerAuthController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:50',
             'email' => 'required|email|max:150|unique:users,email',
+            'phone' => 'required|string|max:30',
+            'postcode' => 'nullable|string|max:10',
+            'address1' => 'nullable|string|max:200',
+            'address2' => 'nullable|string|max:200',
             'password' => 'required|min:4|confirmed',
-        ], [], ['name' => '이름', 'email' => '이메일', 'password' => '비밀번호']);
+        ], [], [
+            'name' => '이름', 'email' => '이메일', 'phone' => '휴대전화',
+            'postcode' => '우편번호', 'address1' => '주소', 'address2' => '상세주소', 'password' => '비밀번호',
+        ]);
 
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
+            'phone' => $data['phone'],
+            'postcode' => $data['postcode'] ?? null,
+            'address1' => $data['address1'] ?? null,
+            'address2' => $data['address2'] ?? null,
             'role' => 'customer',
             'password' => Hash::make($data['password']),
         ]);

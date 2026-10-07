@@ -24,6 +24,18 @@
                 <input type="email" name="email" value="{{ old('email') }}" placeholder="you@example.com">
             </div>
             <div class="field">
+                <label>휴대전화</label>
+                <input type="text" name="phone" value="{{ old('phone') }}" placeholder="010-1234-5678">
+            </div>
+
+            <div class="field">
+                <label>주소 <span style="color:#9aa0a6;font-size:12px;font-weight:600">선택</span></label>
+                <input type="text" name="postcode" value="{{ old('postcode') }}" placeholder="우편번호" style="margin-bottom:8px">
+                <input type="text" name="address1" value="{{ old('address1') }}" placeholder="주소" style="margin-bottom:8px">
+                <input type="text" name="address2" value="{{ old('address2') }}" placeholder="상세주소">
+            </div>
+
+            <div class="field">
                 <label>비밀번호</label>
                 <input type="password" name="password" placeholder="6자 이상">
             </div>
@@ -34,7 +46,10 @@
             <button type="submit" class="btn btn-accent btn-lg btn-block" style="margin-top:8px">가입하기</button>
         </form>
 
-        <div class="alt">이미 계정이 있으신가요? <a href="{{ route('login') }}">로그인</a></div>
+        <div class="alt">
+            사업자 거래처이신가요? <a href="{{ route('partner.register') }}">협력사 회원가입</a><br>
+            이미 계정이 있으신가요? <a href="{{ route('login') }}">로그인</a>
+        </div>
     </div>
 </div>
 @endsection

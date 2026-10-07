@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\MemberController as AdminMember;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\InquiryController;
+use App\Http\Controllers\PartnerRegisterController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PolicyController;
 use App\Http\Controllers\Manage\AuthController as ManageAuth;
@@ -62,8 +63,11 @@ Route::delete('/account', [PolicyController::class, 'destroyAccount'])->middlewa
 // 고객 로그인 / 회원가입
 Route::get('/login', [CustomerAuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [CustomerAuthController::class, 'login'])->name('login.post');
+Route::get('/join', [CustomerAuthController::class, 'showJoinChoice'])->name('join');
 Route::get('/register', [CustomerAuthController::class, 'showRegister'])->name('register');
 Route::post('/register', [CustomerAuthController::class, 'register'])->name('register.post');
+Route::get('/register/partner', [PartnerRegisterController::class, 'show'])->name('partner.register');
+Route::post('/register/partner', [PartnerRegisterController::class, 'register'])->name('partner.register.post');
 Route::post('/logout', [CustomerAuthController::class, 'logout'])->name('logout');
 
 // 비밀번호 찾기 / 재설정 (전 계정 공통)
@@ -114,6 +118,8 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
 
     // 회원 관리
     Route::get('members', [AdminMember::class, 'index'])->name('admin.members');
+    Route::get('members/partner/{profile}/license', [PartnerRegisterController::class, 'license'])->name('admin.members.license');
+    Route::post('members/partner/{profile}/status', [AdminMember::class, 'partnerStatus'])->name('admin.members.partner-status');
     Route::get('members/{member}', [AdminMember::class, 'show'])->name('admin.members.show');
     Route::post('members/{member}/reset-link', [AdminMember::class, 'sendReset'])->name('admin.members.reset-link');
     Route::post('members/{member}/suspend', [AdminMember::class, 'toggleSuspend'])->name('admin.members.suspend');

@@ -47,6 +47,8 @@
         <dl class="mb-dl">
             <dt>구분</dt><dd>{{ \App\Http\Controllers\Admin\MemberController::ROLES[$member->role] ?? ($member->role ?: '일반 회원') }}</dd>
             <dt>가입일</dt><dd>{{ optional($member->created_at)->format('Y.m.d H:i') }}</dd>
+            <dt>휴대전화</dt><dd>{{ $member->phone ?: '-' }}</dd>
+            <dt>주소</dt><dd>{{ trim(($member->postcode ? '('.$member->postcode.') ' : '').$member->address1.' '.$member->address2) ?: '-' }}</dd>
             @if($member->suspended_at)
                 <dt>정지 일시</dt><dd>{{ $member->suspended_at->format('Y.m.d H:i') }}</dd>
             @endif
@@ -57,6 +59,46 @@
         </dl>
     </div>
 </div>
+
+{{-- 협력사 회원 정보 --}}
+@if($member->partnerProfile)
+    @php $p = $member->partnerProfile; @endphp
+    <div class="panel">
+        <div class="panel-h">
+            <div style="display:flex;gap:12px;align-items:center">
+                <span class="badge {{ $p->status_badge }}" style="font-size:13px;padding:6px 14px">{{ $p->status_label }}</span>
+                <div>
+                    <h2 style="margin:0">협력사 정보</h2>
+                    <div class="sub">
+                        승인해야 협력사 할인가로 구매할 수 있습니다
+                        @if($p->approved_at) · {{ $p->approved_at->format('Y.m.d H:i') }} {{ $p->approver->name ?? '' }} 승인@endif
+                    </div>
+                </div>
+            </div>
+            <a href="{{ route('admin.members.license', $p) }}" class="btn btn-sm">사업자등록증 보기</a>
+        </div>
+        <div class="panel-b">
+            <dl class="mb-dl">
+                <dt>회사명</dt><dd>{{ $p->company_name }}</dd>
+                <dt>대표자</dt><dd>{{ $p->owner_name }}</dd>
+                <dt>회사 전화</dt><dd>{{ $p->company_phone }}@if($p->company_fax) · 팩스 {{ $p->company_fax }}@endif</dd>
+                <dt>사업장 주소</dt><dd>{{ $p->business_address }}</dd>
+                <dt>가입자 연락처</dt><dd>{{ $member->phone ?: '-' }}</dd>
+                @if($p->reject_reason)<dt>반려 사유</dt><dd>{{ $p->reject_reason }}</dd>@endif
+            </dl>
+
+            <form method="post" action="{{ route('admin.members.partner-status', $p) }}" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">@csrf
+                <select class="input" name="status" style="height:38px;flex:0 0 150px">
+                    @foreach(\App\Models\PartnerProfile::STATUSES as $k => $v)
+                        <option value="{{ $k }}" @selected($p->status === $k)>{{ $v }}</option>
+                    @endforeach
+                </select>
+                <input class="input" name="reject_reason" value="{{ $p->reject_reason }}" placeholder="반려 사유 (반려일 때만)" style="height:38px;flex:1 1 240px">
+                <button class="btn btn-sm btn-accent">승인 상태 저장</button>
+            </form>
+        </div>
+    </div>
+@endif
 
 {{-- 주문 이력 --}}
 <div class="panel">

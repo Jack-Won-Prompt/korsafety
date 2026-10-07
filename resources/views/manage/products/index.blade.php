@@ -161,6 +161,7 @@
                 <th style="width:170px">카테고리</th>
                 <th style="width:112px">{!! $sortCol('판매가', 'price_desc', 'price_asc') !!}</th>
                 <th style="width:112px">{!! $sortCol('할인가', 'sale_desc', 'sale_asc') !!}</th>
+                <th style="width:112px">{!! $sortCol('협력사가', 'partner_desc', 'partner_asc') !!}</th>
                 <th style="width:96px">{!! $sortCol('재고', 'stock_desc', 'stock_asc', '많은순', '적은순') !!}</th>
                 <th style="width:120px">{!! $sortCol('상태', 'state_onsale', 'state_off', '판매중 먼저', '미판매중 먼저') !!}</th>
                 <th style="width:132px">관리</th>
@@ -200,6 +201,9 @@
                         @if($p->has_discount)<div class="t-sub" style="text-align:right">{{ $p->discount_percent }}% ↓</div>@endif
                     </td>
                     <td>
+                        <input class="input qi" type="number" min="0" name="rows[{{ $p->id }}][partner_price]" value="{{ $p->partner_price }}" placeholder="-" title="협력사 회원에게만 보이는 가격">
+                    </td>
+                    <td>
                         <input class="input qi" type="number" min="0" name="rows[{{ $p->id }}][stock]" value="{{ $p->stock }}">
                         @if($p->stock_level === 'out')<div class="t-sub" style="color:var(--danger);text-align:right">재고 소진</div>
                         @elseif($p->stock_level === 'low')<div class="t-sub" style="color:#a35a06;text-align:right">부족</div>
@@ -222,7 +226,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="9" class="empty">조건에 맞는 상품이 없습니다.</td></tr>
+                <tr><td colspan="10" class="empty">조건에 맞는 상품이 없습니다.</td></tr>
             @endforelse
             </tbody>
         </table>

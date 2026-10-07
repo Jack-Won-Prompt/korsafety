@@ -36,9 +36,9 @@
         <div class="sub">판매점 {{ $stats['seller'] }} · 협력사 {{ $stats['agent'] }} · 구매대행 {{ $stats['purchaser'] }}</div>
     </div>
     <div class="tile">
-        <div class="lab">이용 정지</div>
-        <div class="val" style="{{ $stats['suspended'] ? 'color:#c11c0f' : '' }}">{{ number_format($stats['suspended']) }}<span class="won"> 명</span></div>
-        <div class="sub">로그인할 수 없는 계정</div>
+        <div class="lab">협력사 승인 대기</div>
+        <div class="val" style="{{ $stats['partner_pending'] ? 'color:#a35a06' : '' }}">{{ number_format($stats['partner_pending']) }}<span class="won"> 건</span></div>
+        <div class="sub">승인해야 할인가가 적용됩니다 · 이용 정지 {{ number_format($stats['suspended']) }}명</div>
     </div>
 </div>
 
@@ -99,7 +99,14 @@
                 <td class="t-sub">{{ optional($m->created_at)->format('Y.m.d') }}</td>
                 <td class="t-sub">{{ $m->last_login_at ? \Illuminate\Support\Carbon::parse($m->last_login_at)->format('Y.m.d H:i') : '기록 없음' }}</td>
                 <td>
-                    @if($m->suspended_at)<span class="badge off">정지</span>@else<span class="badge ok">이용중</span>@endif
+                    @if($m->suspended_at)
+                        <span class="badge off">정지</span>
+                    @else
+                        <span class="badge ok">이용중</span>
+                    @endif
+                    @if($m->partnerProfile)
+                        <div style="margin-top:4px"><span class="badge {{ $m->partnerProfile->status_badge }}">{{ $m->partnerProfile->status_label }}</span></div>
+                    @endif
                 </td>
                 <td>
                     <div style="display:flex;gap:6px;flex-wrap:wrap">

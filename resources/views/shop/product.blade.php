@@ -57,6 +57,7 @@
     $detailImgs = $product->detailImages;
     $hero = $product->main_image ?? ($gallery->first()->path ?? null);
     $final = $product->final_price;
+    $isPartnerPrice = $product->partner_price && $product->partnerPriceApplies();
 @endphp
 
 @section('content')
@@ -94,9 +95,14 @@
             <div class="pd-price-box">
                 <div class="pd-price">
                     @if(\App\Models\Setting::get('price_display_mode') === 'price' && $final)
-                        @if($product->has_discount)<span class="off">{{ $product->discount_percent }}%</span>@endif
+                        @if($product->has_discount && ! $isPartnerPrice)<span class="off">{{ $product->discount_percent }}%</span>@endif
                         <span class="now">{{ number_format($final) }}<span class="won">원</span></span>
-                        @if($product->has_discount)<span class="was">{{ number_format($product->price) }}원</span>@endif
+                        @if($isPartnerPrice)
+                            <span class="was">{{ number_format($product->listFinalPrice()) }}원</span>
+                            <span class="p-partner">협력사가</span>
+                        @elseif($product->has_discount)
+                            <span class="was">{{ number_format($product->price) }}원</span>
+                        @endif
                     @else
                         @php $askPhone = trim((string) \App\Models\Setting::get('contact_banner_phone')) ?: '02-2273-9533'; @endphp
                         <span class="ask">가격 문의</span>

@@ -15,7 +15,7 @@ class Product extends Model
 
     protected $fillable = [
         'external_no', 'seller_id', 'category_id', 'name', 'slug', 'sku', 'product_code', 'brand',
-        'price', 'cost_price', 'sale_price', 'stock', 'safety_stock', 'track_stock',
+        'price', 'cost_price', 'sale_price', 'partner_price', 'stock', 'safety_stock', 'track_stock',
         'is_soldout', 'is_active', 'is_best', 'best_sort', 'sort', 'main_image', 'description',
     ];
 
@@ -28,6 +28,7 @@ class Product extends Model
         'price' => 'integer',
         'cost_price' => 'integer',
         'sale_price' => 'integer',
+        'partner_price' => 'integer',
         'stock' => 'integer',
         'safety_stock' => 'integer',
         'sort' => 'integer',
@@ -137,13 +138,41 @@ class Product extends Model
         return $this->options()->where('is_active', true);
     }
 
-    /** Effective selling price (sale price when it is lower than list price). */
+    /**
+     * 실제 판매 가격.
+     * 승인된 협력사 회원이 보고 있고 그 상품에 협력사 할인가가 있으면 그 가격으로 판다.
+     * 장바구니·주문·앱 모두 이 값을 쓰므로 한 곳만 바꾸면 전체에 반영된다.
+     */
     public function getFinalPriceAttribute(): ?int
+    {
+        if ($this->partner_price && $this->partnerPriceApplies()) {
+            return $this->partner_price;
+        }
+
+        return $this->listFinalPrice();
+    }
+
+    /** 협력사 할인가를 뺀, 일반 회원 기준 판매가 */
+    public function listFinalPrice(): ?int
     {
         if ($this->sale_price && $this->price && $this->sale_price < $this->price) {
             return $this->sale_price;
         }
+
         return $this->sale_price ?: $this->price;
+    }
+
+    /** 지금 보고 있는 사람이 승인된 협력사 회원인가 */
+    public function partnerPriceApplies(): bool
+    {
+        static $cached = null;
+
+        if ($cached === null) {
+            $user = auth()->user();
+            $cached = (bool) ($user && method_exists($user, 'isApprovedPartner') && $user->isApprovedPartner());
+        }
+
+        return $cached;
     }
 
     public function getHasDiscountAttribute(): bool

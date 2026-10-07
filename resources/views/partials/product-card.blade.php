@@ -1,6 +1,8 @@
 @php
     $final = $product->final_price;
     $badge = $badge ?? null;
+    // 승인된 협력사 회원이 그 상품의 협력사 할인가로 보고 있는 경우
+    $isPartnerPrice = $product->partner_price && $product->partnerPriceApplies();
 @endphp
 <article class="p-card">
     <a href="{{ route('product.show', $product) }}" class="p-thumb">
@@ -30,7 +32,10 @@
         <div class="p-price">
             @if(\App\Models\Setting::get('price_display_mode') === 'price' && $final)
                 <span class="now">{{ number_format($final) }}<span class="won">원</span></span>
-                @if($product->has_discount)
+                @if($isPartnerPrice)
+                    <span class="was">{{ number_format($product->listFinalPrice()) }}원</span>
+                    <span class="p-partner">협력사가</span>
+                @elseif($product->has_discount)
                     <span class="was">{{ number_format($product->price) }}원</span>
                 @endif
             @else

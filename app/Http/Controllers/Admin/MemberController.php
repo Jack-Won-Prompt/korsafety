@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\LoginLog;
 use App\Models\Order;
+use App\Models\PartnerProfile;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
@@ -15,9 +16,10 @@ class MemberController extends Controller
     /** 역할 구분 (목록 탭) */
     public const ROLES = [
         'customer' => '일반 회원',
+        'partner' => '협력사 회원',
         'hq_admin' => '본사',
         'seller' => '판매점',
-        'agent' => '협력사',
+        'agent' => '영업 협력사',
         'purchaser' => '구매 대행자',
     ];
 
@@ -33,6 +35,7 @@ class MemberController extends Controller
         $to = $request->query('to');
 
         $query = User::query()
+            ->with('partnerProfile')
             ->withCount('orders')
             ->withSum('orders', 'total')
             ->addSelect(['last_login_at' => LoginLog::select('created_at')
@@ -66,6 +69,7 @@ class MemberController extends Controller
             'today' => User::whereDate('created_at', today())->count(),
             'week' => User::where('created_at', '>=', today()->subDays(6))->count(),
             'suspended' => User::whereNotNull('suspended_at')->count(),
+            'partner_pending' => PartnerProfile::where('status', 'pending')->count(),
         ];
         foreach (array_keys(self::ROLES) as $r) {
             $stats[$r] = (int) ($byRole[$r] ?? 0);
@@ -74,8 +78,27 @@ class MemberController extends Controller
         return view('admin.members.index', compact('members', 'stats', 'role', 'state', 'q', 'from', 'to'));
     }
 
+    /** 협력사 회원 승인 · 반려 — 승인해야 협력사 할인가가 적용된다 */
+    public function partnerStatus(Request $request, PartnerProfile $profile)
+    {
+        $data = $request->validate([
+            'status' => 'required|in:pending,approved,rejected',
+            'reject_reason' => 'nullable|string|max:300',
+        ], [], ['status' => '승인 상태', 'reject_reason' => '반려 사유']);
+
+        $profile->update([
+            'status' => $data['status'],
+            'approved_at' => $data['status'] === 'approved' ? now() : null,
+            'approved_by' => $data['status'] === 'approved' ? auth()->id() : null,
+            'reject_reason' => $data['status'] === 'rejected' ? ($data['reject_reason'] ?? null) : null,
+        ]);
+
+        return back()->with('status', $profile->company_name.' 협력사를 "'.PartnerProfile::STATUSES[$data['status']].'" 상태로 바꿨습니다.');
+    }
+
     public function show(User $member)
     {
+        $member->load('partnerProfile.approver');
         $orders = Order::where('user_id', $member->id)->latest('id')->limit(10)->get();
         $logins = LoginLog::where('user_id', $member->id)->orWhere('email', $member->email)
             ->latest('created_at')->limit(10)->get();

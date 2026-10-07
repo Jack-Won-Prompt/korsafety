@@ -43,6 +43,7 @@ class ProductController extends Controller
         'price_desc' => '판매가 높은순', 'price_asc' => '판매가 낮은순',
         'sale_desc' => '할인가 높은순', 'sale_asc' => '할인가 낮은순',
         'stock_desc' => '재고 많은순', 'stock_asc' => '재고 적은순',
+        'partner_desc' => '협력사가 높은순', 'partner_asc' => '협력사가 낮은순',
         'state_onsale' => '판매중 먼저', 'state_off' => '미판매중 먼저',
     ];
 
@@ -113,6 +114,8 @@ class ProductController extends Controller
             'price_asc' => $query->orderByRaw('price is null, price asc')->orderByDesc('id'),
             'sale_desc' => $query->orderByRaw('sale_price is null, sale_price desc')->orderByDesc('id'),
             'sale_asc' => $query->orderByRaw('sale_price is null, sale_price asc')->orderByDesc('id'),
+            'partner_desc' => $query->orderByRaw('partner_price is null, partner_price desc')->orderByDesc('id'),
+            'partner_asc' => $query->orderByRaw('partner_price is null, partner_price asc')->orderByDesc('id'),
             'stock_desc' => $query->orderByDesc('stock')->orderByDesc('id'),
             'stock_asc' => $query->orderBy('stock')->orderByDesc('id'),
             // 판매중 = 쇼핑몰 노출 + 품절 아님
@@ -266,7 +269,7 @@ class ProductController extends Controller
             if (! $product) continue;
 
             $update = [];
-            foreach (['price', 'sale_price', 'stock'] as $field) {
+            foreach (['price', 'sale_price', 'partner_price', 'stock'] as $field) {
                 if (! array_key_exists($field, $vals)) continue;
                 $raw = trim((string) $vals[$field]);
                 $value = $raw === '' ? null : (int) $raw;
@@ -484,7 +487,7 @@ class ProductController extends Controller
     }
 
     /** CSV 헤더 (엑셀 호환, UTF-8) */
-    private const CSV_HEADER = ['상품ID', '상품코드', 'SKU', '상품명', '브랜드', '카테고리', '판매가', '할인가', '재고', '품절(1=품절)', '노출(1=노출)', '대표이미지경로'];
+    private const CSV_HEADER = ['상품ID', '상품코드', 'SKU', '상품명', '브랜드', '카테고리', '판매가', '할인가', '협력사 할인가', '재고', '품절(1=품절)', '노출(1=노출)', '대표이미지경로'];
 
     /** 전체 품목 엑셀(CSV) 다운로드 — 현재 스토어 스코프 */
     public function exportCsv()
@@ -506,6 +509,7 @@ class ProductController extends Controller
                     optional($p->category)->name,
                     $p->price,
                     $p->sale_price,
+                    $p->partner_price,
                     $p->stock,
                     $p->is_soldout ? 1 : 0,
                     $p->is_active ? 1 : 0,
@@ -558,7 +562,7 @@ class ProductController extends Controller
             // 빈 줄 스킵
             if (count(array_filter($row, fn ($v) => trim((string) $v) !== '')) === 0) { continue; }
 
-            [$id, $code, $sku, $name, $brand, $catName, $price, $sale, $stock, $soldout, $active, $image] = array_pad($row, 12, null);
+            [$id, $code, $sku, $name, $brand, $catName, $price, $sale, $partner, $stock, $soldout, $active, $image] = array_pad($row, 13, null);
             $name = trim((string) $name);
             if ($name === '') { $skipped++; continue; }
 
@@ -582,6 +586,7 @@ class ProductController extends Controller
             if ($catId) { $product->category_id = $catId; }
             $product->price = is_numeric($price) ? (int) $price : null;
             $product->sale_price = is_numeric($sale) ? (int) $sale : null;
+            $product->partner_price = is_numeric($partner) ? (int) $partner : null;
             if (is_numeric($stock)) { $product->stock = max(0, (int) $stock); }
             $product->is_soldout = (trim((string) $soldout) === '1');
             // 노출 칸이 비어 있으면 기존 값 유지 (신규는 노출)
@@ -632,6 +637,7 @@ class ProductController extends Controller
             'price' => 'nullable|integer|min:0',
             'cost_price' => 'nullable|integer|min:0',
             'sale_price' => 'nullable|integer|min:0',
+            'partner_price' => 'nullable|integer|min:0',
             'stock' => 'nullable|integer|min:0|max:999999',
             'safety_stock' => 'nullable|integer|min:0|max:999999',
             'track_stock' => 'nullable|boolean',
@@ -650,7 +656,7 @@ class ProductController extends Controller
         ], [
             'product_code.unique' => '이미 사용 중인 상품코드입니다. 다른 값을 입력해 주세요.',
         ], [
-            'name' => '상품명', 'product_code' => '상품코드', 'price' => '판매가', 'cost_price' => '매입가', 'sale_price' => '할인가',
+            'name' => '상품명', 'product_code' => '상품코드', 'price' => '판매가', 'cost_price' => '매입가', 'sale_price' => '할인가', 'partner_price' => '협력사 할인가',
             'stock' => '재고', 'safety_stock' => '안전재고', 'sort' => '진열 순서', 'main_image' => '대표 이미지',
         ]);
     }
@@ -666,6 +672,7 @@ class ProductController extends Controller
         $product->price = $data['price'] ?? null;
         $product->cost_price = $data['cost_price'] ?? null;
         $product->sale_price = $data['sale_price'] ?? null;
+        $product->partner_price = $data['partner_price'] ?? null;
         $product->stock = (int) ($data['stock'] ?? 0);
         $product->safety_stock = (int) ($data['safety_stock'] ?? 0);
         $product->track_stock = $request->boolean('track_stock');

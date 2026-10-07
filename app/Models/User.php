@@ -20,7 +20,10 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'email', 'password', 'role', 'seller_id', 'agent_id', 'purchaser_id', 'suspended_at'];
+    protected $fillable = [
+        'name', 'email', 'password', 'role', 'seller_id', 'agent_id', 'purchaser_id', 'suspended_at',
+        'phone', 'postcode', 'address1', 'address2',
+    ];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -36,6 +39,23 @@ class User extends Authenticatable
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function partnerProfile()
+    {
+        return $this->hasOne(PartnerProfile::class);
+    }
+
+    /** 협력사 회원인가 (가입만 한 상태 포함) */
+    public function isPartner(): bool
+    {
+        return $this->role === 'partner';
+    }
+
+    /** 본사 승인까지 끝나 협력사 할인가를 받을 수 있는가 */
+    public function isApprovedPartner(): bool
+    {
+        return $this->isPartner() && optional($this->partnerProfile)->status === 'approved';
     }
 
     /** 이용 정지된 계정 — 웹·앱 어디서도 로그인할 수 없다 */
@@ -81,7 +101,7 @@ class User extends Authenticatable
 
     public function isCustomer(): bool
     {
-        return $this->role === 'customer' || $this->role === null;
+        return $this->role === 'customer' || $this->role === 'partner' || $this->role === null;
     }
 
     /** 한국어 비밀번호 재설정 메일 */

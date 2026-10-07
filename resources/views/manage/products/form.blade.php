@@ -88,6 +88,10 @@
                             <label>할인가 (원)</label>
                             <input class="input" type="number" name="sale_price" value="{{ old('sale_price', $product->sale_price) }}" placeholder="할인 시 입력" min="0">
                         </div>
+                        <div class="fld">
+                            <label>협력사 할인가 (원)</label>
+                            <input class="input" type="number" name="partner_price" value="{{ old('partner_price', $product->partner_price) }}" placeholder="승인된 협력사 회원 전용" min="0">
+                        </div>
                     </div>
                     <div class="form-2">
                         <div class="form-row">
