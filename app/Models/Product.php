@@ -39,6 +39,20 @@ class Product extends Model
         return $query->where('products.is_active', true);
     }
 
+    /**
+     * 미노출 카테고리에만 속한 상품은 쇼핑몰에서 숨긴다.
+     * 카테고리를 하나도 지정하지 않은 상품은 그대로 보여준다(분류 전 상품까지 사라지지 않도록).
+     */
+    public function scopeInVisibleCategory($query)
+    {
+        $ids = Category::visibleIds();
+
+        return $query->where(function ($w) use ($ids) {
+            $w->whereDoesntHave('categories')
+                ->orWhereHas('categories', fn ($c) => $c->whereIn('categories.id', $ids));
+        });
+    }
+
     /** 재고 관리를 켠 상품 중 안전재고 이하로 떨어진 것 */
     public function scopeLowStock($query)
     {

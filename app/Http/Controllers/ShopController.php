@@ -53,19 +53,19 @@ class ShopController extends Controller
         $categories = Category::active()->roots()->orderBy('sort')->withCount('products')->get();
 
         // 관리자가 고른 베스트 셀러 우선, 지정이 없으면 예전처럼 임의 노출
-        $best = Product::query()->visible()
+        $best = Product::query()->visible()->inVisibleCategory()
             ->whereNotNull('main_image')
             ->where('is_best', true)
             ->orderBy('best_sort')->limit(8)->get();
         if ($best->isEmpty()) {
-            $best = Product::query()->visible()
+            $best = Product::query()->visible()->inVisibleCategory()
                 ->whereNotNull('main_image')
                 ->where('is_soldout', false)
                 ->inRandomOrder()
                 ->limit(8)->get();
         }
 
-        $newIn = Product::query()->visible()
+        $newIn = Product::query()->visible()->inVisibleCategory()
             ->whereNotNull('main_image')
             ->orderByDesc('id')
             ->limit(10)->get();
@@ -74,7 +74,7 @@ class ShopController extends Controller
         $showcase = $categories->take(6)->map(function ($cat) {
             return [
                 'category' => $cat,
-                'products' => $cat->products()->visible()
+                'products' => $cat->products()->visible()->inVisibleCategory()
                     ->whereNotNull('main_image')
                     ->inRandomOrder()->limit(4)->get(),
             ];
@@ -88,12 +88,19 @@ class ShopController extends Controller
 
     public function category(Request $request, Category $category)
     {
+        // 미노출 카테고리는 주소를 직접 입력해도 열리지 않는다 (관리자는 미리보기 가능)
+        if (! in_array($category->id, Category::visibleIds(), true)) {
+            $u = auth()->user();
+            abort_unless($u && ($u->isHqAdmin() || $u->isSeller()), 404);
+        }
+
         $sort = $request->query('sort', 'recommended');
 
         // 상위 분류를 보면 그 아래 중·소분류 상품까지 함께 보여준다
         $categoryIds = $category->descendantIds();
         $query = Product::query()->visible()
-            ->whereHas('categories', fn ($w) => $w->whereIn('categories.id', $categoryIds))
+            ->whereHas('categories', fn ($w) => $w->whereIn('categories.id', $categoryIds)
+                ->whereIn('categories.id', Category::visibleIds()))
             ->whereNotNull('main_image');
 
         match ($sort) {
@@ -146,7 +153,7 @@ class ShopController extends Controller
         $q = trim((string) $request->query('q', ''));
         $products = collect();
         if ($q !== '') {
-            $products = Product::query()->visible()
+            $products = Product::query()->visible()->inVisibleCategory()
                 ->whereNotNull('main_image')
                 ->where(fn ($w) => $w->where('name', 'like', "%$q%")->orWhere('brand', 'like', "%$q%"))
                 ->orderByDesc('id')

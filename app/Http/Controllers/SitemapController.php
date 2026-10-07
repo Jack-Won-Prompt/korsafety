@@ -19,7 +19,7 @@ class SitemapController extends Controller
         }
 
         // 노출 카테고리 (대·중·소 전부)
-        foreach (Category::active()->orderBy('sort')->orderBy('name')->get() as $cat) {
+        foreach (Category::whereIn('id', Category::visibleIds())->orderBy('sort')->orderBy('name')->get() as $cat) {
             $urls[] = [
                 'loc' => route('category.show', $cat),
                 'lastmod' => optional($cat->updated_at)->toAtomString(),
@@ -29,7 +29,7 @@ class SitemapController extends Controller
         }
 
         // 노출 상품 (이미지가 있는 것만 — 검색결과 품질)
-        Product::visible()->whereNotNull('main_image')
+        Product::visible()->inVisibleCategory()->whereNotNull('main_image')
             ->orderByDesc('id')
             ->chunk(500, function ($chunk) use (&$urls) {
                 foreach ($chunk as $p) {
@@ -52,7 +52,7 @@ class SitemapController extends Controller
     /** 네이버 서치어드바이저 RSS 제출용 — 최근 등록 상품 100건 */
     public function rss()
     {
-        $items = Product::visible()
+        $items = Product::visible()->inVisibleCategory()
             ->whereNotNull('main_image')->where('main_image', '!=', '')
             ->with('category')
             ->orderByDesc('id')

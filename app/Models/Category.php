@@ -101,6 +101,36 @@ class Category extends Model
         return $this->hasMany(self::class, 'parent_id')->orderBy('sort')->orderBy('name');
     }
 
+    /**
+     * 쇼핑몰에 실제로 보이는 카테고리 id — 자신과 모든 상위가 노출이어야 한다.
+     * 상위를 미노출로 바꾸면 그 아래 분류도 함께 숨긴다.
+     */
+    public static function visibleIds(): array
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $rows = static::query()->get(['id', 'parent_id', 'is_active'])->keyBy('id');
+
+        $visible = function ($id) use ($rows, &$visible, &$memo) {
+            if (isset($memo[$id])) {
+                return $memo[$id];
+            }
+            $row = $rows->get($id);
+            if (! $row) {
+                return $memo[$id] = false;
+            }
+            $ok = (bool) $row->is_active && ($row->parent_id === null || $visible($row->parent_id));
+
+            return $memo[$id] = $ok;
+        };
+        $memo = [];
+
+        return $cache = $rows->keys()->filter(fn ($id) => $visible($id))->values()->all();
+    }
+
     public function scopeActive($query)
     {
         return $query->where('categories.is_active', true);
