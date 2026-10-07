@@ -3,6 +3,8 @@
     $badge = $badge ?? null;
     // 승인된 협력사 회원이 그 상품의 협력사 할인가로 보고 있는 경우
     $isPartnerPrice = $product->partner_price && $product->partnerPriceApplies();
+    // 관리자는 일반가와 협력사가를 함께 본다
+    $showsBoth = $product->showsBothPrices();
 @endphp
 <article class="p-card">
     <a href="{{ route('product.show', $product) }}" class="p-thumb">
@@ -37,6 +39,9 @@
                     <span class="p-partner">협력사가</span>
                 @elseif($product->has_discount)
                     <span class="was">{{ number_format($product->price) }}원</span>
+                @endif
+                @if($showsBoth)
+                    <div class="p-partner-line">협력사가 <b>{{ number_format($product->partner_price) }}원</b></div>
                 @endif
             @else
                 <span class="ask">가격 문의</span>

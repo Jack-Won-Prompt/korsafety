@@ -162,6 +162,22 @@ class Product extends Model
         return $this->sale_price ?: $this->price;
     }
 
+    /**
+     * 관리자가 쇼핑몰을 볼 때는 일반가와 협력사가를 함께 보여준다.
+     * 일반 회원·비로그인에게는 협력사가가 보이지 않는다.
+     */
+    public function showsBothPrices(): bool
+    {
+        static $isManager = null;
+
+        if ($isManager === null) {
+            $user = auth()->user();
+            $isManager = (bool) ($user && method_exists($user, 'isHqAdmin') && ($user->isHqAdmin() || $user->isSeller()));
+        }
+
+        return $isManager && $this->partner_price !== null;
+    }
+
     /** 지금 보고 있는 사람이 승인된 협력사 회원인가 */
     public function partnerPriceApplies(): bool
     {

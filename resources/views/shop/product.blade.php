@@ -58,6 +58,7 @@
     $hero = $product->main_image ?? ($gallery->first()->path ?? null);
     $final = $product->final_price;
     $isPartnerPrice = $product->partner_price && $product->partnerPriceApplies();
+    $showsBoth = $product->showsBothPrices();
 @endphp
 
 @section('content')
@@ -109,6 +110,13 @@
                         <a href="tel:{{ preg_replace('/[^0-9+]/', '', $askPhone) }}" class="btn btn-ghost btn-sm" style="margin-left:12px">☎ {{ $askPhone }}</a>
                     @endif
                 </div>
+                @if($showsBoth)
+                    <div class="pd-partner-row">
+                        <span class="p-partner">협력사가</span>
+                        <b>{{ number_format($product->partner_price) }}원</b>
+                        <span class="pd-partner-note">관리자에게만 보입니다</span>
+                    </div>
+                @endif
             </div>
 
             <dl class="pd-meta">
