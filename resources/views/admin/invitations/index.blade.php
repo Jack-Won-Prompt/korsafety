@@ -13,10 +13,49 @@
     .inv-tabs a{padding:7px 14px;border-radius:999px;border:1px solid #e3e6ee;background:#fff;font-size:13px;font-weight:700;color:#555;text-decoration:none}
     .inv-tabs a.on{background:#1b2130;border-color:#1b2130;color:#fff}
     .inv-tabs a b{margin-left:4px;font-weight:800}
+
+    /* 명단 파일 고르기 — 브라우저 기본 파일 입력은 꾸밀 수 없어 버튼과 이름을 따로 그린다 */
+    .file-pick{display:flex;align-items:center;gap:12px;min-width:0;padding:9px 12px;
+               border:1.5px dashed #d8dce6;border-radius:10px;background:#fafbfd;transition:.15s}
+    .file-pick:hover{border-color:#1b2130;background:#f4f6fa}
+    .file-pick input[type="file"]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+                                  overflow:hidden;clip:rect(0,0,0,0);border:0}
+    .file-pick-btn{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:32px;
+                   margin:0;padding:0 14px;border-radius:999px;background:#1b2130;color:#fff;
+                   font-size:13px;font-weight:700;cursor:pointer}
+    .file-pick-btn:hover{background:#000}
+    .file-pick-btn svg{width:15px;height:15px}
+    .file-pick input[type="file"]:focus-visible + .file-pick-btn{outline:2px solid #ff5722;outline-offset:2px}
+    .file-pick-name{min-width:0;font-size:13px;color:#8a90a0;overflow:hidden;
+                    text-overflow:ellipsis;white-space:nowrap}
+    .file-pick.has-file{border-style:solid;border-color:#86c9a4;background:#f0fdf4}
+    .file-pick.has-file .file-pick-name{color:#14804a;font-weight:700}
+    @media (max-width:560px){
+        .file-pick{flex-wrap:wrap}
+        .file-pick-name{width:100%}
+    }
 </style>
 @endpush
 
+@include('partials.file-pick')
+
 @section('content')
+@push('scripts')
+<script>
+// 명단 파일을 고르지 않고 보내려 하면 미리 알려 준다
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-need-file]');
+    if (!btn) return;
+    var form = btn.closest('form');
+    var input = form && form.querySelector('input[type="file"]');
+    if (input && !(input.files && input.files.length)) {
+        e.preventDefault();
+        alert('올릴 명단 파일을 먼저 선택해 주세요.');
+        input.click();
+    }
+});
+</script>
+@endpush
 @php $tabUrl = fn ($s) => route('admin.invitations', array_merge(request()->except(['page','status']), ['status' => $s])); @endphp
 
 <div class="tiles">
@@ -69,8 +108,15 @@
             <form method="post" action="{{ route('admin.invitations.import') }}" enctype="multipart/form-data"
                   style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">@csrf
                 <span class="t-sub" style="font-weight:700">② 작성한 명단</span>
-                <input class="input" type="file" name="file" accept=".csv,.txt" required style="height:38px;flex:1 1 260px;padding:7px 10px">
-                <button class="btn btn-sm">명단 올려서 보내기</button>
+                <div class="file-pick" style="flex:1 1 280px">
+                    <input type="file" id="invFile" name="file" accept=".csv,.txt">
+                    <label for="invFile" class="file-pick-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v12"/></svg>
+                        파일 선택
+                    </label>
+                    <span class="file-pick-name" data-file-name data-empty="선택한 파일이 없습니다">선택한 파일이 없습니다</span>
+                </div>
+                <button class="btn btn-sm" data-need-file>명단 올려서 보내기</button>
             </form>
 
             <div class="t-sub" style="margin-top:10px;line-height:1.6">

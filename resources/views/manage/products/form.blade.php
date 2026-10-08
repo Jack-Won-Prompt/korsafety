@@ -10,8 +10,14 @@
     @csrf
     @if($editing) @method('PUT') @endif
 
-    <div class="grid-2">
-        <div>
+    <div class="ptab-nav" role="tablist">
+        <button type="button" class="ptab on" data-tab="basic" role="tab">기본 정보</button>
+        <button type="button" class="ptab" data-tab="price" role="tab">가격 · 재고</button>
+        <button type="button" class="ptab" data-tab="image" role="tab">이미지</button>
+        <button type="button" class="ptab" data-tab="option" role="tab">옵션<span class="ptab-badge" id="optTabCount"></span></button>
+    </div>
+
+    <div class="ptab-pane on" data-pane="basic">
             <div class="panel">
                 <div class="panel-h"><h2>기본 정보</h2></div>
                 <div class="panel-b">
@@ -75,7 +81,9 @@
                     </div>
                 </div>
             </div>
+    </div>
 
+    <div class="ptab-pane" data-pane="price">
             <div class="panel">
                 <div class="panel-h"><div><h2>가격 · 재고</h2><div class="sub">할인가가 정상가보다 낮을 때 할인 배지가 표시됩니다</div></div></div>
                 <div class="panel-b">
@@ -88,7 +96,7 @@
                             <label>할인가 (원)</label>
                             <input class="input" type="number" name="sale_price" value="{{ old('sale_price', $product->sale_price) }}" placeholder="할인 시 입력" min="0">
                         </div>
-                        <div class="fld">
+                        <div class="form-row">
                             <label>협력사 할인가 (원)</label>
                             <input class="input" type="number" name="partner_price" value="{{ old('partner_price', $product->partner_price) }}" placeholder="승인된 협력사 회원 전용" min="0">
                         </div>
@@ -131,9 +139,10 @@
                     </div>
                 </div>
             </div>
-        </div>
+    </div>
 
-        <div>
+    <div class="ptab-pane" data-pane="image">
+        <div class="img-cols">
             <div class="panel">
                 <div class="panel-h"><h2>대표 이미지</h2></div>
                 <div class="panel-b">
@@ -156,6 +165,7 @@
                 </div>
             </div>
 
+            <div class="img-side">
             <div class="panel">
                 <div class="panel-h"><h2>추가 이미지 (갤러리)</h2></div>
                 <div class="panel-b">
@@ -204,9 +214,11 @@
                     </label>
                 </div>
             </div>
+            </div>
         </div>
     </div>
 
+    <div class="ptab-pane" data-pane="option">
     {{-- 상품 옵션 --}}
     <div class="panel">
         <div class="panel-h">
@@ -277,8 +289,9 @@
             </div>
         </div>
     </div>
+    </div>
 
-    <div style="display:flex;gap:10px">
+    <div class="ptab-actions">
         <button class="btn btn-accent" type="submit">{{ $editing ? '수정 저장' : '상품 등록' }}</button>
         <a href="{{ route('manage.products.index') }}" class="btn">취소</a>
     </div>
@@ -301,6 +314,29 @@
 @endif
 
 @push('styles')
+<style>
+    /* 상품 편집 — 가로 탭 */
+    .ptab-nav{display:flex;gap:4px;flex-wrap:wrap;border-bottom:2px solid #e8e9ee;margin-bottom:18px}
+    .ptab{position:relative;border:0;background:none;padding:12px 20px;font-size:14.5px;font-weight:700;
+          color:#8a90a0;cursor:pointer;border-radius:8px 8px 0 0;transition:color .15s,background .15s}
+    .ptab:hover{color:#1b2130;background:#f7f8fa}
+    .ptab.on{color:#1b2130}
+    .ptab.on::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:2px;background:var(--accent,#ff5722)}
+    .ptab-badge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:#eef1ff;
+                color:#3646c7;font-size:11.5px;font-weight:800}
+    .ptab-badge:empty{display:none}
+    .ptab.has-error{color:#c11c0f}
+    .ptab.has-error::before{content:"!";position:absolute;top:6px;right:8px;width:14px;height:14px;line-height:14px;
+                            border-radius:50%;background:#c11c0f;color:#fff;font-size:10px;text-align:center}
+    .img-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+    .img-cols > .panel, .img-side > .panel{margin:0}
+    .img-side{display:flex;flex-direction:column;gap:18px;min-width:0}
+    @media (max-width:900px){ .img-cols{grid-template-columns:1fr} }
+    .ptab-actions{display:flex;gap:10px;margin-top:18px}
+    .ptab-pane{display:none}
+    .ptab-pane.on{display:block}
+    @media (max-width:640px){ .ptab{padding:11px 14px;font-size:13.5px} }
+</style>
 <link rel="stylesheet" href="https://cdn.quilljs.com/1.3.7/quill.snow.css">
 <style>
     .rte{border:1.5px solid var(--line);border-radius:10px;transition:border-color .15s;background:#fff}
@@ -318,6 +354,72 @@
 @endpush
 
 @push('scripts')
+<script>
+// 상품 편집 가로 탭 — 숨긴 칸도 같은 폼 안에 있어 저장하면 전부 함께 저장된다
+(function () {
+    var tabs = document.querySelectorAll('.ptab');
+    var panes = document.querySelectorAll('.ptab-pane');
+    var KEY = 'korsafety.productTab';
+
+    function show(name, remember) {
+        var found = false;
+        panes.forEach(function (p) {
+            var on = p.getAttribute('data-pane') === name;
+            p.classList.toggle('on', on);
+            if (on) found = true;
+        });
+        if (!found) return false;
+        tabs.forEach(function (t) { t.classList.toggle('on', t.getAttribute('data-tab') === name); });
+        if (remember) { try { localStorage.setItem(KEY, name); } catch (e) {} }
+        return true;
+    }
+
+    tabs.forEach(function (t) {
+        t.addEventListener('click', function () { show(t.getAttribute('data-tab'), true); });
+    });
+
+    // 입력값이 잘못된 칸에 표시를 달고, 그 칸을 먼저 보여 준다
+    var firstBad = null;
+    panes.forEach(function (p) {
+        if (!p.querySelector('.err-msg')) return;
+        var name = p.getAttribute('data-pane');
+        if (!firstBad) firstBad = name;
+        var tab = document.querySelector('.ptab[data-tab="' + name + '"]');
+        if (tab) tab.classList.add('has-error');
+    });
+
+    // 수정 화면에서는 마지막으로 보던 칸을 다시 열어 준다 (새 상품은 늘 기본 정보부터)
+    var saved = null;
+    @if($editing)
+    try { saved = localStorage.getItem(KEY); } catch (e) {}
+    @endif
+    if (!(firstBad && show(firstBad, false)) && !(saved && show(saved, false))) {
+        show('basic', false);
+    }
+
+    // 옵션 개수를 탭에 표시한다
+    function countOptions() {
+        var badge = document.getElementById('optTabCount');
+        if (!badge) return;
+        var rows = document.querySelectorAll('#optBody tr').length;
+        badge.textContent = rows ? rows : '';
+    }
+    countOptions();
+    var body = document.getElementById('optBody');
+    if (body && window.MutationObserver) {
+        new MutationObserver(countOptions).observe(body, { childList: true });
+    }
+
+    // 저장 전에 모든 칸을 검사할 수 있도록, 브라우저 기본 검사에 걸리면 그 칸을 펼친다
+    var form = document.querySelector('form[enctype]');
+    if (form) {
+        form.addEventListener('invalid', function (e) {
+            var pane = e.target.closest('.ptab-pane');
+            if (pane) show(pane.getAttribute('data-pane'), false);
+        }, true);
+    }
+})();
+</script>
 <script>
     var mi=document.getElementById('mainInput');
     if(mi) mi.addEventListener('change',function(){document.getElementById('mainLabel').textContent=this.files[0]?('선택됨: '+this.files[0].name):'대표 이미지 업로드 (클릭)';});
