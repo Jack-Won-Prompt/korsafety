@@ -310,7 +310,8 @@ class AdminController extends Controller
         Setting::put('seo_google_verify', $this->verifyToken($request->input('seo_google_verify')));
         Setting::put('sr_notify_email', trim((string) $request->input('sr_notify_email')) ?: Setting::DEFAULTS['sr_notify_email']);
 
-        // 자동 처리 Agent
+        // 자동 처리 Agent — 담당자가 보낸 요청일 때만 반영한다 (화면을 못 보는 사람이 값을 바꾸지 못하게)
+        if (optional($request->user())->isAgentOperator()) {
         Setting::put('agent_enabled', $request->boolean('agent_enabled') ? '1' : '0');
         Setting::put('agent_error_enabled', $request->boolean('agent_error_enabled') ? '1' : '0');
         Setting::put('agent_sr_enabled', $request->boolean('agent_sr_enabled') ? '1' : '0');
@@ -320,6 +321,7 @@ class AdminController extends Controller
         Setting::put('agent_model_fix', in_array($request->input('agent_model_fix'), \App\Services\AgentWorker::MODELS, true)
             ? $request->input('agent_model_fix') : Setting::DEFAULTS['agent_model_fix']);
         Setting::put('agent_daily_limit', (string) max(0, min(200, (int) $request->input('agent_daily_limit', 20))));
+        }
         return redirect()->route('admin.settings')->with('status', '설정이 저장되었습니다.');
     }
 }

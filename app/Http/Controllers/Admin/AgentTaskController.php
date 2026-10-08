@@ -8,10 +8,23 @@ use App\Models\Setting;
 use App\Services\AgentFixer;
 use App\Services\AgentWorker;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
 /** 자동 처리 Agent 작업 내역 — 무엇을 어떻게 고쳤는지 사람이 따라 읽을 수 있게 (본사 전용) */
-class AgentTaskController extends Controller
+class AgentTaskController extends Controller implements HasMiddleware
 {
+    /** 담당자만 볼 수 있다 — 화면을 숨기는 것만으로는 주소를 직접 치면 열리므로 여기서도 막는다 */
+    public static function middleware(): array
+    {
+        return [
+            function ($request, $next) {
+                abort_unless(optional($request->user())->isAgentOperator(), 403, '자동 처리 Agent 담당자만 볼 수 있습니다.');
+
+                return $next($request);
+            },
+        ];
+    }
+
     public function index(Request $request)
     {
         $status = $request->query('status', 'all');

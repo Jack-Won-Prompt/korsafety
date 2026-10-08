@@ -66,6 +66,17 @@ class User extends Authenticatable
         return $this->suspended_at !== null;
     }
 
+    /**
+     * 자동 처리 Agent 담당자인가.
+     * Agent 는 코드를 고쳐 배포까지 하므로, 본사 관리자 중에서도 정해 둔 담당자에게만 보인다.
+     */
+    public function isAgentOperator(): bool
+    {
+        $allowed = mb_strtolower(trim((string) config('services.agent.operator_email')));
+
+        return $this->isHqAdmin() && $allowed !== '' && mb_strtolower(trim((string) $this->email)) === $allowed;
+    }
+
     /** 가입 승인을 기다리는 중인가 (초대로 가입한 회원) */
     public function awaitingApproval(): bool
     {

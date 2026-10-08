@@ -151,6 +151,7 @@
         </div>
     </div>
 
+    @if(auth()->user()->isAgentOperator())
     <div class="panel">
         <div class="panel-h">
             <div><h2>자동 처리 Agent</h2>
@@ -237,6 +238,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     <button class="btn btn-accent" type="submit">설정 저장</button>
 </form>
