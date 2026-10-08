@@ -117,6 +117,9 @@ class ServiceRequestController extends Controller
         ]);
 
         $notify = $this->notifyCreated($sr);
+
+        // 자동 처리 Agent 에 접수한다 — 꺼져 있으면 아무 일도 하지 않는다
+        \App\Services\AgentIntake::sr($sr);
         $redirect = redirect()->route('manage.sr.show', $sr)
             ->with('status', 'SR '.$sr->sr_no.' 이(가) 접수되었습니다.'.($notify['ok'] ? ' '.$notify['message'] : ''));
 
