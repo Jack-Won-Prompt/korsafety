@@ -264,6 +264,14 @@ class AdminController extends Controller
             'home_show_categories' => Setting::bool('home_show_categories'),
             'price_display_mode'   => Setting::get('price_display_mode'),
             'maintenance_mode'     => Setting::bool('maintenance_mode'),
+            'agent_enabled'        => Setting::bool('agent_enabled'),
+            'agent_error_enabled'  => Setting::bool('agent_error_enabled'),
+            'agent_sr_enabled'     => Setting::bool('agent_sr_enabled'),
+            'agent_auto_fix'       => Setting::bool('agent_auto_fix'),
+            'agent_model'          => Setting::get('agent_model'),
+            'agent_model_fix'      => Setting::get('agent_model_fix'),
+            'agent_daily_limit'    => Setting::get('agent_daily_limit'),
+            'agent_api_key_set'    => \App\Services\AgentWorker::apiKey() !== '',
             'maintenance_message'  => Setting::get('maintenance_message'),
             'contact_banner_enabled' => Setting::bool('contact_banner_enabled'),
             'contact_banner_text'    => Setting::get('contact_banner_text'),
@@ -301,6 +309,17 @@ class AdminController extends Controller
         Setting::put('seo_naver_verify', $this->verifyToken($request->input('seo_naver_verify')));
         Setting::put('seo_google_verify', $this->verifyToken($request->input('seo_google_verify')));
         Setting::put('sr_notify_email', trim((string) $request->input('sr_notify_email')) ?: Setting::DEFAULTS['sr_notify_email']);
+
+        // 자동 처리 Agent
+        Setting::put('agent_enabled', $request->boolean('agent_enabled') ? '1' : '0');
+        Setting::put('agent_error_enabled', $request->boolean('agent_error_enabled') ? '1' : '0');
+        Setting::put('agent_sr_enabled', $request->boolean('agent_sr_enabled') ? '1' : '0');
+        Setting::put('agent_auto_fix', $request->boolean('agent_auto_fix') ? '1' : '0');
+        Setting::put('agent_model', in_array($request->input('agent_model'), \App\Services\AgentWorker::MODELS, true)
+            ? $request->input('agent_model') : Setting::DEFAULTS['agent_model']);
+        Setting::put('agent_model_fix', in_array($request->input('agent_model_fix'), \App\Services\AgentWorker::MODELS, true)
+            ? $request->input('agent_model_fix') : Setting::DEFAULTS['agent_model_fix']);
+        Setting::put('agent_daily_limit', (string) max(0, min(200, (int) $request->input('agent_daily_limit', 20))));
         return redirect()->route('admin.settings')->with('status', '설정이 저장되었습니다.');
     }
 }

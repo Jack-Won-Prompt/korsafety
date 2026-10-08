@@ -138,7 +138,7 @@ class ErrorLog extends Model
                 return;
             }
 
-            self::create($context + [
+            $created = self::create($context + [
                 'fingerprint' => $fingerprint,
                 'type' => self::classify($e),
                 'exception_class' => $class,
@@ -151,6 +151,9 @@ class ErrorLog extends Model
                 'last_seen_at' => $now,
                 'status' => 'unresolved',
             ]);
+
+            // 자동 처리 Agent 에 접수한다 (꺼져 있으면 아무 일도 하지 않는다)
+            \App\Services\AgentIntake::error($created);
         } catch (Throwable $ignored) {
             // DB 장애 등으로 기록하지 못해도 기본 파일 로그는 그대로 남는다
         } finally {

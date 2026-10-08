@@ -151,6 +151,93 @@
         </div>
     </div>
 
+    <div class="panel">
+        <div class="panel-h">
+            <div><h2>자동 처리 Agent</h2>
+                <div class="sub">운영 오류를 스스로 고쳐 배포하고, SR에 답변을 등록합니다 ·
+                    <a href="{{ route('admin.agent') }}">작업 내역 보기</a></div>
+            </div>
+        </div>
+        <div class="panel-b">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:24px">
+                <div>
+                    <div style="font-weight:700;font-size:15px">Agent 사용</div>
+                    <div class="hint" style="margin-top:6px">이 스위치를 끄면 접수도 처리도 모두 멈춥니다. 문제가 생기면 여기를 먼저 끄세요.</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" name="agent_enabled" value="1" {{ $settings['agent_enabled'] ? 'checked' : '' }}>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:18px;padding-top:18px;border-top:1px solid #eef0f4">
+                <div>
+                    <div style="font-weight:700;font-size:15px">운영 오류 접수</div>
+                    <div class="hint" style="margin-top:6px">오류가 나면 원인을 분석해 오류 관리에 기록합니다.</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" name="agent_error_enabled" value="1" {{ $settings['agent_error_enabled'] ? 'checked' : '' }}>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:18px">
+                <div>
+                    <div style="font-weight:700;font-size:15px">SR 자동 답변</div>
+                    <div class="hint" style="margin-top:6px">SR이 등록되면 내용을 읽고 답변을 등록합니다.</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" name="agent_sr_enabled" value="1" {{ $settings['agent_sr_enabled'] ? 'checked' : '' }}>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:18px">
+                <div>
+                    <div style="font-weight:700;font-size:15px">코드 자동 수정·배포</div>
+                    <div class="hint" style="margin-top:6px">
+                        분석에 그치지 않고 코드를 고쳐 운영에 반영합니다.
+                        결제·주문·회원정보·인증·DB 구조·설정 파일은 손대지 않으며,
+                        파일 1개·60줄 이내만 고치고, 배포 후 쇼핑몰이 정상 응답하지 않으면 즉시 되돌립니다.
+                    </div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" name="agent_auto_fix" value="1" {{ $settings['agent_auto_fix'] ? 'checked' : '' }}>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;padding-top:18px;border-top:1px solid #eef0f4">
+                <div style="flex:1 1 200px">
+                    <label style="font-weight:700;font-size:14px;display:block;margin-bottom:8px">분석 모델</label>
+                    <select class="input" name="agent_model">
+                        @foreach(\App\Services\AgentWorker::MODELS as $m)
+                            <option value="{{ $m }}" @selected($settings['agent_model'] === $m)>{{ $m }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div style="flex:1 1 200px">
+                    <label style="font-weight:700;font-size:14px;display:block;margin-bottom:8px">코드 수정 모델</label>
+                    <select class="input" name="agent_model_fix">
+                        @foreach(\App\Services\AgentWorker::MODELS as $m)
+                            <option value="{{ $m }}" @selected($settings['agent_model_fix'] === $m)>{{ $m }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div style="flex:0 0 160px">
+                    <label style="font-weight:700;font-size:14px;display:block;margin-bottom:8px">하루 처리 상한</label>
+                    <input class="input" type="number" name="agent_daily_limit" min="0" max="200"
+                           value="{{ old('agent_daily_limit', $settings['agent_daily_limit']) }}">
+                </div>
+            </div>
+
+            <div class="hint" style="margin-top:14px">
+                API 키 상태: <b>{{ $settings['agent_api_key_set'] ? '등록됨' : '없음' }}</b> —
+                키는 서버 환경 설정(ANTHROPIC_API_KEY)에서만 읽습니다. 키가 없으면 Agent 는 동작하지 않습니다.
+            </div>
+        </div>
+    </div>
+
     <button class="btn btn-accent" type="submit">설정 저장</button>
 </form>
 @endsection

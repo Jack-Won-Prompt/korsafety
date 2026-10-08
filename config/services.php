@@ -61,4 +61,13 @@ return [
         'error_token' => env('SW_ERROR_TOKEN'),
     ],
 
+    /*
+     | 자동 처리 Agent — 운영 오류 분석 · SR 답변 작성에 쓰는 Claude 키.
+     | 키는 .env 에만 둔다(화면에 저장하지 않는다). 없으면 Agent 는 조용히 쉰다.
+     | 켜고 끄는 스위치와 모델·상한은 관리자 › 설정에서 바꾼다.
+     */
+    'agent' => [
+        'api_key' => env('ANTHROPIC_API_KEY', env('AGENT_API_KEY')),
+    ],
+
 ];

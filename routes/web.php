@@ -126,6 +126,12 @@ Route::prefix('admin')->middleware('role:hq_admin')->group(function () {
     Route::post('cashbacks/{order}/pay', [AdminController::class, 'payCashback'])->name('admin.cashbacks.pay');
     Route::get('login-logs', [AdminController::class, 'loginLogs'])->name('admin.login-logs');
 
+    // 자동 처리 Agent
+    Route::get('agent', [\App\Http\Controllers\Admin\AgentTaskController::class, 'index'])->name('admin.agent');
+    Route::post('agent/run', [\App\Http\Controllers\Admin\AgentTaskController::class, 'run'])->name('admin.agent.run');
+    Route::post('agent/{task}/retry', [\App\Http\Controllers\Admin\AgentTaskController::class, 'retry'])->name('admin.agent.retry');
+    Route::post('agent/{task}/revert', [\App\Http\Controllers\Admin\AgentTaskController::class, 'revert'])->name('admin.agent.revert');
+
     // 회원 초대
     Route::get('invitations', [AdminInvitation::class, 'index'])->name('admin.invitations');
     Route::post('invitations', [AdminInvitation::class, 'store'])->name('admin.invitations.store');
