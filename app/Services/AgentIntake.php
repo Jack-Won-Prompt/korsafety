@@ -29,7 +29,7 @@ class AgentIntake
             // trace 는 모델에 같은 이름의 메서드가 있어 속성 접근이 막히므로 원본 값에서 직접 꺼낸다
             $trace = (string) ($log->getAttributes()['trace'] ?? '');
             $where = mb_strtolower((string) $log->file.' '.$trace);
-            foreach (['agentworker', 'agentfixer', 'agentintake', 'agenttask'] as $mine) {
+            foreach (['agentworker', 'agentfixer', 'agentintake', 'agenttask', 'agenthook', 'agentworkcommand'] as $mine) {
                 if (str_contains($where, $mine)) {
                     return;
                 }

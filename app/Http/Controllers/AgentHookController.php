@@ -25,7 +25,11 @@ class AgentHookController extends Controller
         $body = $request->getContent();
 
         if (! AgentHook::verify($body, $request->header('x-agent-sign'))) {
-            Log::warning('Agent 웹훅 — 서명이 맞지 않아 거절', ['ip' => $request->ip()]);
+            // 기록이 실패해도(로그 파일 권한 등) 거절 응답은 그대로 나가야 한다
+            try {
+                Log::warning('Agent 웹훅 — 서명이 맞지 않아 거절', ['ip' => $request->ip()]);
+            } catch (Throwable $ignored) {
+            }
 
             return response()->json(['message' => '서명이 올바르지 않습니다.'], 401);
         }
@@ -58,7 +62,10 @@ class AgentHookController extends Controller
             // 웹훅을 놓쳐 남아 있는 일감이 있으면 함께 처리한다 (cron 없이 스스로 따라잡기)
             $worker->run(self::CATCH_UP);
         } catch (Throwable $e) {
-            Log::error('Agent 웹훅 처리 실패', ['task' => $taskId, '사유' => mb_substr($e->getMessage(), 0, 300)]);
+            try {
+                Log::error('Agent 웹훅 처리 실패', ['task' => $taskId, '사유' => mb_substr($e->getMessage(), 0, 300)]);
+            } catch (Throwable $ignored) {
+            }
         }
     }
 }

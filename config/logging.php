@@ -62,6 +62,9 @@ return [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
+            // 웹(www-data)과 명령줄(ubuntu)이 번갈아 기록하므로 그룹도 쓸 수 있게 둔다.
+            // 한쪽이 만든 파일에 다른 쪽이 못 쓰면 기록하다 500 이 난다.
+            'permission' => 0664,
             'replace_placeholders' => true,
         ],
 
@@ -70,6 +73,8 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
+            // single 채널과 같은 이유로 그룹 쓰기를 허용한다
+            'permission' => 0664,
             'replace_placeholders' => true,
         ],
 
