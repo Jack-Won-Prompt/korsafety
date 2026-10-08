@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AgentTask;
 use App\Models\ErrorLog;
+use App\Services\AgentHook;
 use App\Models\ServiceRequest;
 use App\Models\Setting;
 use Throwable;
@@ -41,7 +42,7 @@ class AgentIntake
                 return;
             }
 
-            AgentTask::create([
+            $task = AgentTask::create([
                 'type' => 'error',
                 'ref_id' => $log->id,
                 'dedupe_key' => $key,
@@ -54,6 +55,9 @@ class AgentIntake
                 ],
                 'status' => 'pending',
             ]);
+
+            // 접수한 그 자리에서 웹훅으로 알린다 (주기 실행 없이 바로 처리되도록)
+            AgentHook::notify($task);
         } catch (Throwable $ignored) {
             // 접수에 실패해도 오류 기록 자체는 남아 있어야 한다
         }
@@ -72,7 +76,7 @@ class AgentIntake
                 return;
             }
 
-            AgentTask::create([
+            $task = AgentTask::create([
                 'type' => 'sr',
                 'ref_id' => $sr->id,
                 'dedupe_key' => $key,
@@ -83,6 +87,9 @@ class AgentIntake
                 ],
                 'status' => 'pending',
             ]);
+
+            // 접수한 그 자리에서 웹훅으로 알린다 (주기 실행 없이 바로 처리되도록)
+            AgentHook::notify($task);
         } catch (Throwable $ignored) {
         }
     }

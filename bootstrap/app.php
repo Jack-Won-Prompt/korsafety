@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\EnsureRole::class,
             'api.role' => \App\Http\Middleware\EnsureApiRole::class,
         ]);
+
+        // Agent 웹훅은 서버가 서버에게 보내는 것이라 화면 토큰(CSRF)이 없다.
+        // 대신 APP_KEY 로 만든 서명을 본문과 함께 확인한다.
+        $middleware->validateCsrfTokens(except: ['agent/hook']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // api/* 는 물론, JSON을 기대하는 AJAX 요청(fetch 업로드 등)에도 JSON으로 응답한다.

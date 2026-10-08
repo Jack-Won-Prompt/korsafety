@@ -68,6 +68,8 @@ return [
      */
     'agent' => [
         'api_key' => env('ANTHROPIC_API_KEY', env('AGENT_API_KEY')),
+        // 웹훅 주소 — 비워 두면 APP_URL 기준으로 /agent/hook 을 쓴다
+        'hook_url' => env('AGENT_HOOK_URL'),
     ],
 
 ];

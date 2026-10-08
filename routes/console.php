@@ -8,9 +8,7 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// 대기 중인 Agent 일감 처리 — 접수된 오류·SR을 5분마다 살핀다.
-// 기능이 꺼져 있거나 API 키가 없으면 아무 일도 하지 않고 지나간다.
-Schedule::command('agent:work --limit=3')
-    ->everyFiveMinutes()
-    ->withoutOverlapping(10)
-    ->runInBackground();
+// Agent 는 주기 실행으로 돌지 않는다.
+// 오류·SR이 접수되는 그 자리에서 웹훅(/agent/hook)을 보내 바로 처리하고,
+// 웹훅을 놓친 건은 다음 웹훅이 올 때 함께 따라잡는다.
+// 손으로 돌려야 할 때만 `php artisan agent:work` 를 쓴다.

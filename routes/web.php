@@ -37,6 +37,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [ShopController::class, 'home'])->name('home');
 Route::get('/about', [ShopController::class, 'about'])->name('about');
+// Agent 웹훅 — 오류·SR 접수 알림을 받아 바로 처리한다 (서명으로 확인, 화면 토큰 없음)
+Route::post('/agent/hook', [\App\Http\Controllers\AgentHookController::class, 'handle'])
+    ->middleware('throttle:60,1')->name('agent.hook');
+
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('/rss.xml', [SitemapController::class, 'rss'])->name('rss');
 Route::get('/search', [ShopController::class, 'search'])->name('search');
