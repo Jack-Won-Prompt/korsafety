@@ -41,7 +41,9 @@
                             <div class="cat-picker">
                                 @forelse($categories as $c)
                                     <label class="cat-opt d{{ $c->tree_depth }}">
+                                        {{-- 상위 분류 id를 함께 내보내야 소분류 체크 시 상위를 자동으로 찾아 체크할 수 있다 --}}
                                         <input type="checkbox" name="category_ids[]" value="{{ $c->id }}"
+                                               data-cat-id="{{ $c->id }}" data-parent-id="{{ $c->parent_id }}"
                                                @checked(in_array($c->id, $selectedCats, true))>
                                         <span>{{ $c->tree_depth ? '└ ' : '' }}{{ $c->name }}</span>
                                         <em>{{ \App\Models\Category::DEPTH_LABELS[$c->tree_depth] }}</em>
@@ -421,6 +423,29 @@
 })();
 </script>
 <script>
+// 카테고리 — 하위 분류를 체크하면 상위(중분류 → 대분류)도 자동으로 함께 체크한다.
+// 상위를 빠뜨린 채 저장돼 쇼핑몰 상위 분류 목록에서 상품이 보이지 않던 문제를 막기 위함.
+(function () {
+    var boxes = document.querySelectorAll('.cat-picker input[type="checkbox"][data-cat-id]');
+    if (!boxes.length) return;
+
+    var byId = {};
+    boxes.forEach(function (b) { byId[b.getAttribute('data-cat-id')] = b; });
+
+    boxes.forEach(function (b) {
+        b.addEventListener('change', function () {
+            if (!b.checked) return;   // 해제할 때는 상위를 건드리지 않는다(다른 하위가 남아 있을 수 있음)
+            var pid = b.getAttribute('data-parent-id');
+            var guard = 0;            // 자료가 잘못돼 순환이 생겨도 멈추도록 안전장치
+            while (pid && byId[pid] && guard++ < 10) {
+                byId[pid].checked = true;
+                pid = byId[pid].getAttribute('data-parent-id');
+            }
+        });
+    });
+})();
+</script>
+<script>
     var mi=document.getElementById('mainInput');
     if(mi) mi.addEventListener('change',function(){document.getElementById('mainLabel').textContent=this.files[0]?('선택됨: '+this.files[0].name):'대표 이미지 업로드 (클릭)';});
     var gi=document.getElementById('galInput');
@@ -695,80 +720,3 @@
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             credentials: 'same-origin',
-            body: fd,
-        }).then(function(r){
-            return r.text().then(function(text){
-                var data = null;
-                try { data = JSON.parse(text); } catch(e){ /* HTML 오류 페이지 */ }
-                return { ok: r.ok, status: r.status, data: data, html: !data };
-            });
-        });
-    }
-
-    var busy = 0;
-    function setBusy(on){
-        busy += on ? 1 : -1;
-        wrapEl.classList.toggle('uploading', busy > 0);
-    }
-
-    function upload(file){
-        if(!file) return;
-        setBusy(true);
-        prepare(file)
-          .then(send)
-          .then(function(res){
-              if(!res.ok || !res.data || !res.data.url) throw new Error(failMessage(res));
-              var range = quill.getSelection(true) || { index: quill.getLength() };
-              quill.insertEmbed(range.index, 'image', res.data.url);
-              quill.setSelection(range.index + 1);
-          })
-          .catch(function(err){
-              alert('이미지 업로드에 실패했습니다.\n' + (err && err.message ? err.message : err));
-          })
-          .then(function(){ setBusy(false); });
-    }
-
-    quill.getModule('toolbar').addHandler('image', function(){
-        var inp = document.createElement('input');
-        inp.type = 'file'; inp.accept = 'image/*';
-        inp.onchange = function(){ if(inp.files[0]) upload(inp.files[0]); };
-        inp.click();
-    });
-
-    // 붙여넣기 · 드래그 앤 드롭으로 이미지 첨부
-    quill.root.addEventListener('paste', function(e){
-        var dt = e.clipboardData;
-        if(!dt) return;
-
-        // 1순위: files (Explorer에서 복사한 이미지 파일), 2순위: items (화면 캡처 등 클립보드 비트맵)
-        var file = Array.prototype.slice.call(dt.files || [])
-            .filter(function(f){ return (f.type || '').indexOf('image/') === 0; })[0];
-        if(!file){
-            var item = Array.prototype.slice.call(dt.items || [])
-                .filter(function(x){ return x.kind === 'file' && (x.type || '').indexOf('image/') === 0; })[0];
-            if(item) file = item.getAsFile();
-        }
-        if(!file) return;
-        e.preventDefault();
-        e.stopPropagation();
-        upload(file);
-    });
-    quill.root.addEventListener('drop', function(e){
-        var file = Array.prototype.slice.call((e.dataTransfer || {}).files || [])
-            .filter(function(f){ return f.type.indexOf('image/') === 0; })[0];
-        if(!file) return;
-        e.preventDefault();
-        upload(file);
-    });
-
-    // 저장 직전 HTML을 hidden으로 동기화 (빈 내용이면 빈 문자열)
-    var form = editorEl.closest('form');
-    if(form){
-        form.addEventListener('submit', function(){
-            hiddenEl.value = quill.getLength() <= 1 ? '' : quill.root.innerHTML;
-        });
-    }
-})();
-</script>
-@endpush
-@endsection
