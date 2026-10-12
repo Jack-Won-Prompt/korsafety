@@ -764,6 +764,9 @@ h1,h2,h3,h4 { margin: 0; font-weight: 800; letter-spacing: -0.03em; line-height:
   position: absolute; top: 100%; left: 0; z-index: 60; min-width: 190px;
   background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px;
   box-shadow: var(--shadow-lg); display: none;
+  /* 중분류·소분류가 많으면 목록이 화면 아래로 넘쳐 잘리므로
+     화면 높이에 맞춰 최대 높이를 두고 세로 스크롤로 전부 볼 수 있게 한다. */
+  max-height: calc(100vh - 170px); overflow-y: auto; overscroll-behavior: contain;
 }
 .catnav-item.has-sub:hover .subnav,
 .catnav-item.has-sub:focus-within .subnav { display: block; }

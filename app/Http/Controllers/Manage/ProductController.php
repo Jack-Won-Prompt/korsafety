@@ -447,12 +447,16 @@ class ProductController extends Controller
         return response()->json(['url' => asset('shop/uploads/'.$this->sellerId().'/editor/'.$name)]);
     }
 
-    /** 대표 이미지 편집기 (회전·밝기·대비·크롭) */
+    /**
+     * 대표 이미지 편집 — 별도 편집 화면(image-editor)을 없애고
+     * 상품 등록·수정 폼 안의 편집기에서 가격·이미지를 한 번에 저장하도록 되돌렸다.
+     * 예전 주소로 들어와도 끊기지 않게 수정 폼의 이미지 영역으로 넘긴다.
+     */
     public function editImage(Product $product)
     {
         $this->authorizeOwner($product);
-        abort_if(! $product->main_image, 404, '편집할 대표 이미지가 없습니다.');
-        return view('manage.products.image-editor', compact('product'));
+
+        return redirect()->route('manage.products.edit', $product)->withFragment('image-editor');
     }
 
     public function saveImage(Request $request, Product $product)
@@ -482,12 +486,15 @@ class ProductController extends Controller
         $path = '/shop/uploads/'.$this->sellerId().'/'.$name;
         $product->update(['main_image' => $path]);
 
-        // 모달에서 저장한 경우 새 이미지 주소만 돌려주고 화면은 그대로 둔다
+        // 폼 안의 편집기에서 비동기로 저장한 경우 새 이미지 주소만 돌려주고 화면은 그대로 둔다
         if ($request->wantsJson()) {
             return response()->json(['url' => asset($path), 'message' => '이미지가 편집·저장되었습니다.']);
         }
 
-        return redirect()->route('manage.products.edit', $product)->with('status', '이미지가 편집·저장되었습니다.');
+        // 일반 요청이면 별도 화면 없이 수정 폼의 이미지 영역으로 돌아간다
+        return redirect()->route('manage.products.edit', $product)
+            ->withFragment('image-editor')
+            ->with('status', '이미지가 편집·저장되었습니다.');
     }
 
     /** CSV 헤더 (엑셀 호환, UTF-8) */

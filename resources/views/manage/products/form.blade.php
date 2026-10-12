@@ -41,9 +41,10 @@
                             <div class="cat-picker">
                                 @forelse($categories as $c)
                                     <label class="cat-opt d{{ $c->tree_depth }}">
-                                        {{-- 소분류를 고르면 상위 분류도 함께 켜지도록 깊이를 표시해 둔다 --}}
+                                        {{-- 소분류를 고르면 상위 분류도 함께 켜지도록 상위 id를 심어 둔다 (출력 순서에 기대지 않기 위함) --}}
                                         <input type="checkbox" name="category_ids[]" value="{{ $c->id }}"
                                                data-depth="{{ $c->tree_depth }}"
+                                               data-parent="{{ $c->parent_id }}"
                                                @checked(in_array($c->id, $selectedCats, true))>
                                         <span>{{ $c->tree_depth ? '└ ' : '' }}{{ $c->name }}</span>
                                         <em>{{ \App\Models\Category::DEPTH_LABELS[$c->tree_depth] }}</em>
@@ -358,24 +359,29 @@
 @push('scripts')
 <script>
 // 카테고리 — 소분류를 고르면 그 위의 중분류·대분류도 자동으로 함께 선택한다.
-// 목록이 대→중→소 순서로 출력되므로, 체크한 항목에서 위로 거슬러 올라가며
-// 한 단계씩 얕은 깊이를 처음 만나는 항목이 그 항목의 상위 분류가 된다.
+// 출력 순서에 기대면 정렬이 바뀔 때 엉뚱한 항목이 켜지므로,
+// 각 체크박스에 심어 둔 상위 id(data-parent)를 따라 위로 거슬러 올라가며 켠다.
 (function () {
     var picker = document.querySelector('.cat-picker');
     if (!picker) return;
     var boxes = Array.prototype.slice.call(picker.querySelectorAll('input[type=checkbox][data-depth]'));
     if (!boxes.length) return;
 
+    // id로 체크박스를 바로 찾을 수 있게 표를 만들어 둔다
+    var byId = {};
+    boxes.forEach(function (b) { byId[b.value] = b; });
+
     picker.addEventListener('change', function (e) {
         var box = e.target;
         if (boxes.indexOf(box) === -1 || !box.checked) return;
 
-        var need = parseInt(box.getAttribute('data-depth'), 10) - 1;
-        for (var i = boxes.indexOf(box) - 1; i >= 0 && need >= 0; i--) {
-            if (parseInt(boxes[i].getAttribute('data-depth'), 10) === need) {
-                boxes[i].checked = true;
-                need--;
-            }
+        // 순환 참조로 무한 반복에 빠지지 않도록 지나온 항목을 기록한다
+        var seen = {};
+        var parentId = box.getAttribute('data-parent');
+        while (parentId && byId[parentId] && !seen[parentId]) {
+            seen[parentId] = true;
+            byId[parentId].checked = true;
+            parentId = byId[parentId].getAttribute('data-parent');
         }
     });
 })();
