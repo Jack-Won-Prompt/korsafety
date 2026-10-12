@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AgentTask;
 use App\Services\AgentHook;
 use App\Services\AgentWorker;
 use Illuminate\Http\Request;
@@ -10,15 +9,20 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * 웹훅 수신 — 오류·SR 접수 알림을 받아 그 일감을 바로 처리한다.
+ * 웹훅 수신 — 오류·SR 접수 알림을 받아 일꾼을 깨운다.
  *
- * 받자마자 응답을 돌려주고, 실제 처리는 응답을 보낸 뒤에 한다.
- * 분석과 수정에 1~5분이 걸릴 수 있어, 보내는 쪽을 붙잡아 두면 안 되기 때문이다.
+ * 처리를 여기서 직접 하지 않는 까닭이 있다.
+ * 웹은 www-data 로 돌지만 작업용 사본과 배포 열쇠는 ubuntu 것이라,
+ * 웹 프로세스는 코드를 고칠 수도 올릴 수도 없다.
+ * 열쇠를 웹 쪽에 내주는 대신, 신호만 남기고 실제 일은 ubuntu 로 도는 쪽에 맡긴다.
+ *
+ * 신호는 약속한 자리에 빈 파일 하나를 두는 것으로 한다.
+ * systemd 가 그 파일이 생기는 것을 보고 일꾼을 깨운다 — 주기적으로 들여다보지 않는다.
  */
 class AgentHookController extends Controller
 {
-    /** 한 번 받을 때 함께 처리할 밀린 일감 수 (웹훅을 놓친 건을 따라잡는다) */
-    private const CATCH_UP = 3;
+    /** 일꾼을 깨우는 신호를 두는 자리 */
+    public const SIGNAL_DIR = '/var/tmp/korsafety-agent';
 
     public function handle(Request $request)
     {
@@ -40,32 +44,34 @@ class AgentHookController extends Controller
 
         $taskId = (int) ($request->json('task_id') ?? 0);
 
-        // 응답을 먼저 돌려주고, 처리는 그 뒤에 한다
-        app()->terminating(function () use ($taskId) {
-            $this->process($taskId);
-        });
-
-        return response()->json(['received' => $taskId], 202);
+        return response()->json([
+            'received' => $taskId,
+            'woken' => $this->signal($taskId),
+        ], 202);
     }
 
-    /** 알림이 온 일감을 처리하고, 밀린 것도 함께 따라잡는다 */
-    private function process(int $taskId): void
+    /**
+     * 일꾼을 깨운다 — 약속한 자리에 빈 파일을 둔다.
+     *
+     * 깨우지 못해도 일감은 이미 대기 줄에 들어가 있으므로 다음 신호 때 함께 처리된다.
+     * 그래서 여기서 실패해도 접수 자체를 되돌리지는 않는다.
+     */
+    private function signal(int $taskId): bool
     {
         try {
-            $worker = new AgentWorker();
-
-            $task = AgentTask::where('id', $taskId)->where('status', 'pending')->first();
-            if ($task) {
-                $worker->handle($task);
+            if (! is_dir(self::SIGNAL_DIR)) {
+                return false;
             }
+            $file = self::SIGNAL_DIR.'/trigger-'.($taskId ?: 'catchup').'-'.time();
 
-            // 웹훅을 놓쳐 남아 있는 일감이 있으면 함께 처리한다 (cron 없이 스스로 따라잡기)
-            $worker->run(self::CATCH_UP);
+            return @file_put_contents($file, (string) $taskId) !== false;
         } catch (Throwable $e) {
             try {
-                Log::error('Agent 웹훅 처리 실패', ['task' => $taskId, '사유' => mb_substr($e->getMessage(), 0, 300)]);
+                Log::warning('Agent 일꾼을 깨우지 못했다', ['task' => $taskId]);
             } catch (Throwable $ignored) {
             }
+
+            return false;
         }
     }
 }
