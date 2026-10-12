@@ -142,8 +142,10 @@ class AgentWorker
 
         // 끝까지 가야 한다. 못 끝냈으면 다음 차례에 다시 잡도록 대기로 돌린다.
         // 코드로 고칠 건이 아니라고 판가름 난 것만 그 자리에서 접는다 — 다시 해도 같다.
+        // 이미 들어가 있어 손댈 것이 없었던 건은 못 끝낸 것이 아니라 끝난 것이다.
         $notCode = ! ($analysis['code_change'] ?? true);
-        $unfinished = ! $notCode && (($fix['blocked'] ?? false) || ! ($fix['fixed'] ?? false));
+        $settled = ($fix['fixed'] ?? false) || ($fix['already'] ?? false);
+        $unfinished = ! $notCode && (($fix['blocked'] ?? false) || ! $settled);
 
         $task->status = match (true) {
             $notCode => 'skipped',
@@ -529,7 +531,7 @@ TXT;
         // 아직 끝내지 못했는데 앞선 시도의 답변이 남아 있으면 같은 말을 두 번 하지 않는다.
         // 반대로 이번에 반영을 마쳤다면 그 결과는 반드시 알려야 한다.
         $already = $sr->replies()->where('is_staff', true)->exists();
-        if ($already && ! ($fix['fixed'] ?? false)) {
+        if ($already && ! (($fix['fixed'] ?? false) || ($fix['already'] ?? false))) {
             return '이미 등록한 답변이 있고 이번에도 반영하지 못해 그대로 두었습니다.'.($fix['message'] ?? '');
         }
 
@@ -547,9 +549,9 @@ TXT;
         $sr->update([
             'reply_count' => $sr->replies()->count(),
             'assignee_id' => $sr->assignee_id ?: $staff?->id,
-            // 고칠 것이 없던 문의도 답변으로 끝난 건이다 — 처리중으로 남겨 두지 않는다
-            'status' => (($fix['fixed'] ?? false) || ! ($analysis['code_change'] ?? false))
-                ? 'resolved' : 'in_progress',
+            // 고칠 것이 없던 문의도, 이미 들어가 있던 건도 끝난 것이다 — 처리중으로 남겨 두지 않는다
+            'status' => (($fix['fixed'] ?? false) || ($fix['already'] ?? false)
+                || ! ($analysis['code_change'] ?? false)) ? 'resolved' : 'in_progress',
         ]);
 
         return ($fix['fixed'] ?? false)
@@ -571,6 +573,7 @@ TXT;
         // 다 해놓고도 아직 안 됐다고 답하는 일이 생긴다(실제로 그랬다).
         [$state, $did] = match (true) {
             (bool) ($fix['fixed'] ?? false) => ['반영 완료', $fix['message'] ?: '운영에 반영했습니다.'],
+            (bool) ($fix['already'] ?? false) => ['이미 반영됨', $fix['message'] ?: '이미 들어가 있었습니다.'],
             ! (bool) ($analysis['code_change'] ?? false) => ['안내', '코드를 고칠 일은 아니어서 안내로 답변합니다.'],
             default => ['반영 못 함', $fix['message'] ?: '사유 미상'],
         };
@@ -582,6 +585,8 @@ TXT;
 
  · [상태] 가 "반영 완료" 면 — 이미 운영에 올라가 있습니다. 끝났다고 분명히 쓰고
    확인해 보시라고 안내하십시오. "진행 중", "곧 반영", "기다려 달라" 는 틀린 말입니다.
+ · [상태] 가 "이미 반영됨" 면 — 손댈 것 없이 이미 들어가 있었습니다.
+   "반영 완료" 와 마찬가지로 끝났다고 쓰되, 새로 고쳤다고는 쓰지 마십시오.
  · [상태] 가 "반영 못 함" 면 — 아직 그대로입니다. 됐다고 쓰면 안 됩니다.
  · [상태] 가 "안내" 면 — 고칠 코드가 없는 건입니다. 안내만 하십시오.
 

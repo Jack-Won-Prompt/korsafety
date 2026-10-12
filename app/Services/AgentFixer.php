@@ -56,6 +56,9 @@ class AgentFixer
     /** 한 요청에서 고칠 수 있는 파일 수 */
     private const MAX_FILES_SR = 4;
 
+    /** 요청한 내용이 이미 파일에 들어가 있을 때 모델이 돌려주는 표시 */
+    private const ALREADY = '*** 이미 반영됨';
+
     /** 고친 전문을 받을 때 모델에게 허용하는 출력 길이 */
     private const REWRITE_MAX_TOKENS = 32000;
 
@@ -112,7 +115,7 @@ class AgentFixer
             $this->git(['reset', '--hard', 'origin/main']);
 
             // 2) 파일마다 고친 전문을 받는다 (조각 수정은 줄이 어긋나기 쉬워 전문으로 받는다)
-            $touched = $notes = [];
+            $touched = $notes = $done = [];
             foreach ($files as $file) {
                 $path = self::WORK_DIR.'/'.$file;
                 if (! is_file($path)) {
@@ -127,6 +130,11 @@ class AgentFixer
                     continue;
                 }
                 $after = $this->rewrite($file, $before, $analysis, $task);
+                if ($after === self::ALREADY) {
+                    $done[] = $file;
+                    $notes[] = "{$file}: 이미 반영돼 있음";
+                    continue;
+                }
                 if ($after === '' || $after === $before) {
                     $notes[] = "{$file}: 고칠 내용 없음";
                     continue;
@@ -137,6 +145,14 @@ class AgentFixer
 
             if (! $touched) {
                 $this->revertWorkTree();
+
+                // 손댈 것이 없었던 까닭이 "이미 들어가 있어서" 라면 못 한 것이 아니라 끝난 것이다.
+                // 둘을 가르지 않으면, 다 반영된 건을 다시 돌릴 때마다 실패로 읽혀
+                // 요청자에게 "반영하지 못했습니다" 라는 틀린 답이 나간다.
+                if ($done && ! array_diff($files, $done)) {
+                    return ['tried' => true, 'fixed' => false, 'already' => true, 'blocked' => false,
+                        'commit' => null, 'message' => '요청하신 내용은 이미 반영돼 있었습니다 ('.implode(', ', $done).').'];
+                }
 
                 return $this->out(true, false, '고칠 내용을 만들지 못해 그대로 두었습니다. '.implode(' / ', $notes));
             }
@@ -274,6 +290,10 @@ SEARCH 규칙 — 이것이 어긋나면 수정은 통째로 버려집니다.
  · Blade 화면을 고칠 때 @endif@if 처럼 지시문을 붙여 쓰지 마십시오. 화면이 깨집니다.
  · 주석은 한국어로, 왜 그렇게 했는지를 적으십시오.
  · 덩이 말고 다른 말은 쓰지 마십시오.
+
+받은 파일을 읽어 보니 요청한 내용이 이미 들어가 있다면, 덩이를 보내지 말고
+아래 한 줄만 보내십시오. 괜히 손대서 같은 것을 두 번 넣지 않도록 하기 위함입니다.
+*** 이미 반영됨
 TXT;
 
         $user = "고칠 파일: {$file}\n\n"
@@ -318,6 +338,10 @@ TXT;
         $task->tokens = (int) $task->tokens
             + (int) ($res->json('usage.input_tokens') ?? 0)
             + (int) ($res->json('usage.output_tokens') ?? 0);
+
+        if (str_contains($text, self::ALREADY)) {
+            return self::ALREADY;
+        }
 
         $after = $this->applyEdits($before, $text, $file);
         if ($after === null || $after === $before) {
