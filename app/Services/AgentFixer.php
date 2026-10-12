@@ -340,6 +340,51 @@ TXT;
     }
 
     /**
+     * 라우트가 가리키는 컨트롤러 메서드가 모두 있는지 본다.
+     *
+     * 작업용 사본에서 따로 띄워 확인한다. 지금 돌고 있는 쪽은 아직 예전 코드라
+     * 여기서 class_exists 로 봐 봐야 바뀐 파일을 보지 못한다.
+     *
+     * @return string|null 모두 멀쩡하면 null, 끊긴 자리가 있으면 사유
+     */
+    private function checkRoutes(): ?string
+    {
+        $script = <<<'PHP'
+        $bad = [];
+        foreach (app('router')->getRoutes() as $route) {
+            $uses = $route->getAction('uses');
+            if (! is_string($uses) || ! str_contains($uses, '@')) {
+                continue;
+            }
+            [$class, $method] = explode('@', $uses, 2);
+            if (! class_exists($class) || ! method_exists($class, $method)) {
+                $bad[] = $route->uri().' → '.class_basename($class).'@'.$method;
+            }
+        }
+        echo $bad ? implode(' / ', array_slice($bad, 0, 3)) : 'OK';
+        PHP;
+
+        $path = self::WORK_DIR.'/storage/app/agent-routecheck.php';
+        if (@file_put_contents($path, "<?php\n".$script) === false) {
+            return null;   // 검사를 못 했다고 해서 수정을 막지는 않는다
+        }
+
+        $run = Process::path(self::WORK_DIR)->timeout(120)
+            ->run(['php', 'artisan', 'tinker', 'storage/app/agent-routecheck.php']);
+        @unlink($path);
+
+        $out = trim($run->output());
+        if ($out === '' || ! $run->successful()) {
+            return null;
+        }
+        if (! str_contains($out, 'OK')) {
+            return '주소가 끊겼습니다 — '.mb_substr($out, 0, 200);
+        }
+
+        return null;
+    }
+
+    /**
      * 받은 덩이를 파일에 끼워 넣는다.
      *
      * SEARCH 가 파일에 없거나 여러 군데 걸리면 어디를 고치라는 것인지 알 수 없다.
@@ -432,7 +477,15 @@ TXT;
             }
         }
 
-        // 4) 변경량 — 짚어 둔 파일만, 정해진 줄 수 안쪽
+        // 4) 길이 뚫린 자리가 없는지 — 라우트가 가리키는 메서드가 실제로 있어야 한다.
+        //    메서드를 지우면서 라우트를 그대로 두면 그 주소만 죽는데, 문법 검사도
+        //    화면 변환 검사도 이것은 잡지 못하고 첫 화면은 멀쩡해 배포 뒤 확인도 통과한다.
+        //    실제로 Agent 가 editImage 를 지우고 라우트를 남겨 주소 하나가 죽은 적이 있다.
+        if ($problem = $this->checkRoutes()) {
+            return $problem;
+        }
+
+        // 5) 변경량 — 짚어 둔 파일만, 정해진 줄 수 안쪽
         $maxFiles = $wide ? self::MAX_FILES_SR : 1;
         $maxLines = $wide ? self::MAX_LINES_SR : self::MAX_LINES;
 
