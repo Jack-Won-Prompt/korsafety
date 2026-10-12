@@ -140,15 +140,16 @@ class AgentWorker
             ? $this->writeBackError($task, $analysis, $fix)
             : $this->writeBackSr($task, $analysis, $fix);
 
-        // SR 은 끝까지 가야 한다. 못 끝냈으면 다음 차례에 다시 잡도록 대기로 돌린다.
-        $unfinished = ($fix['blocked'] ?? false)
-            || ($task->type === 'sr' && ($analysis['code_change'] ?? false) && ! ($fix['fixed'] ?? false));
+        // 끝까지 가야 한다. 못 끝냈으면 다음 차례에 다시 잡도록 대기로 돌린다.
+        // 코드로 고칠 건이 아니라고 판가름 난 것만 그 자리에서 접는다 — 다시 해도 같다.
+        $notCode = ! ($analysis['code_change'] ?? true);
+        $unfinished = ! $notCode && (($fix['blocked'] ?? false) || ! ($fix['fixed'] ?? false));
 
         $task->status = match (true) {
+            $notCode => 'skipped',
             ! $unfinished => 'done',
-            $task->type === 'sr' && $task->attempts < 3 => 'pending',
-            $task->type === 'sr' => 'failed',
-            default => 'skipped',
+            $task->attempts < 3 => 'pending',
+            default => 'failed',
         };
         $task->result = mb_substr($message, 0, 1000);
         $task->commit_hash = $fix['commit'] ?? null;
@@ -176,15 +177,19 @@ class AgentWorker
 반드시 아래 형식의 JSON 한 덩이만 답하십시오. 설명 문장을 앞뒤에 붙이지 마십시오.
 {
   "cause": "원인을 한국어 두세 문장으로",
-  "file": "고칠 파일 경로 (저장소 기준, 예: app/Http/Controllers/ShopController.php). 모르면 빈 문자열",
+  "files": ["고칠 파일 경로", "..."],
   "how": "고치는 방법을 한국어로 구체적으로",
   "risk": "payment|order|personal|migration|auth|config|none",
-  "needs_human": true 또는 false,
+  "code_change": true 또는 false,
   "confidence": "높음|보통|낮음"
 }
-결제·주문 금액·회원 개인정보·DB 구조 변경·로그인 인증·서버 설정에 조금이라도 닿으면
-risk 를 그 갈래로 적고 needs_human 을 반드시 true 로 두십시오.
-확신이 낮으면 needs_human 을 true 로 두십시오.
+
+고칠 파일은 [파일 목록] 에 있는 경로만 쓸 수 있습니다.
+목록에 없는 경로를 지어내지 마십시오. 버려집니다.
+코드로 고칠 수 있는 오류가 아니면(서버 설정·권한·없는 명령 따위)
+files 를 빈 배열로 두고 code_change 를 false 로, cause 에 무엇을 손봐야 하는지 적으십시오.
+
+risk 에는 오류가 닿아 있는 갈래를 그대로 적으십시오. 판단 자료로 씁니다.
 TXT;
 
         $user = "[오류]\n"
@@ -203,7 +208,9 @@ TXT;
             $user .= "\n[관련 소스 {$log->file}]\n".$source."\n";
         }
 
-        return $this->ask($system, $user, (string) Setting::get('agent_model'), 4000);
+        $user .= "\n[파일 목록]\n".$this->fileIndex();
+
+        return $this->groundFiles($this->ask($system, $user, (string) Setting::get('agent_model'), 4000));
     }
 
     /**
@@ -459,20 +466,16 @@ TXT;
         if (! Setting::bool('agent_auto_fix')) {
             return $none + ['message' => '자동 수정이 꺼져 있어 분석만 했습니다.'];
         }
-        if ($task->type === 'sr' && ! ($analysis['code_change'] ?? false)) {
-            return $none;
-        }
-        // SR 은 사람에게 넘기지 않는다 — Agent 가 끝까지 처리한다.
-        // 오류 건은 예고 없이 터진 상황이라 지금처럼 조심스럽게 둔다.
-        if ($task->type === 'error') {
-            if (($analysis['needs_human'] ?? true) || in_array($analysis['risk'] ?? 'none', self::HUMAN_ONLY, true)) {
-                return ['tried' => false, 'fixed' => false, 'blocked' => true, 'commit' => null,
-                    'message' => '사람 확인이 필요한 갈래('.($analysis['risk'] ?? '-').')라 코드를 건드리지 않았습니다.'];
-            }
-            if (($analysis['confidence'] ?? '') !== '높음') {
-                return ['tried' => false, 'fixed' => false, 'blocked' => true, 'commit' => null,
-                    'message' => '확신이 높지 않아 코드를 건드리지 않았습니다.'];
-            }
+
+        // 요청이든 오류든 사람에게 넘기지 않는다 — Agent 가 고쳐서 배포까지 한다.
+        //
+        // 막는 일은 사람의 판단이 아니라 기계로 확인되는 것에만 맡긴다.
+        // 손대지 않는 자리(결제·주문·회원·인증, DB 구조·서버 설정)는 경로로 거르고,
+        // 잘린 답·지우기만 하는 수정·문법 오류는 검증에서 거르고,
+        // 배포 뒤 쇼핑몰이 200 으로 답하지 않으면 즉시 되돌린다.
+        if (! ($analysis['code_change'] ?? true)) {
+            return ['tried' => false, 'fixed' => false, 'blocked' => true, 'commit' => null,
+                'message' => '코드로 고칠 수 있는 건이 아닙니다: '.mb_substr((string) ($analysis['cause'] ?? '-'), 0, 160)];
         }
         if (! ($analysis['files'] ?? []) && trim((string) ($analysis['file'] ?? '')) === '') {
             $dropped = $analysis['_dropped'] ?? [];
