@@ -10,14 +10,8 @@
     @csrf
     @if($editing) @method('PUT') @endif
 
-    <div class="ptab-nav" role="tablist">
-        <button type="button" class="ptab on" data-tab="basic" role="tab">기본 정보</button>
-        <button type="button" class="ptab" data-tab="price" role="tab">가격 · 재고</button>
-        <button type="button" class="ptab" data-tab="image" role="tab">이미지</button>
-        <button type="button" class="ptab" data-tab="option" role="tab">옵션<span class="ptab-badge" id="optTabCount"></span></button>
-    </div>
-
-    <div class="ptab-pane on" data-pane="basic">
+    {{-- 탭으로 나눠 입력하던 방식을 되돌려, 기본정보·가격·이미지·옵션을 한 화면에서 한 번에 저장한다 --}}
+    <div class="ptab-pane" data-pane="basic">
             <div class="panel">
                 <div class="panel-h"><h2>기본 정보</h2></div>
                 <div class="panel-b">
@@ -336,8 +330,9 @@
     .img-side{display:flex;flex-direction:column;gap:18px;min-width:0}
     @media (max-width:900px){ .img-cols{grid-template-columns:1fr} }
     .ptab-actions{display:flex;gap:10px;margin-top:18px}
-    .ptab-pane{display:none}
-    .ptab-pane.on{display:block}
+    /* 한 화면에서 모두 입력하도록 모든 영역을 항상 펼쳐 둔다 */
+    .ptab-pane{display:block}
+    .ptab-pane + .ptab-pane{margin-top:18px}
     @media (max-width:640px){ .ptab{padding:11px 14px;font-size:13.5px} }
 </style>
 <link rel="stylesheet" href="https://cdn.quilljs.com/1.3.7/quill.snow.css">
@@ -359,9 +354,9 @@
 @push('scripts')
 <script>
 // 카테고리 — 소분류를 고르면 그 위의 중분류·대분류도 자동으로 함께 선택한다.
-// 출력 순서에 기대면 정렬이 바뀔 때 엉뚱한 항목이 켜지므로,
-// 각 체크박스에 심어 둔 상위 id(data-parent)를 따라 위로 거슬러 올라가며 켠다.
-(function () {
+// 이전에는 스크립트가 카테고리 목록보다 먼저 실행되면 .cat-picker를 찾지 못해
+// 그대로 빠져나가 아무 동작도 하지 않았다. DOM이 준비된 뒤에 걸도록 바꾼다.
+document.addEventListener('DOMContentLoaded', function () {
     var picker = document.querySelector('.cat-picker');
     if (!picker) return;
     var boxes = Array.prototype.slice.call(picker.querySelectorAll('input[type=checkbox][data-depth]'));
@@ -369,13 +364,11 @@
 
     // id로 체크박스를 바로 찾을 수 있게 표를 만들어 둔다
     var byId = {};
-    boxes.forEach(function (b) { byId[b.value] = b; });
+    boxes.forEach(function (b) { byId[String(b.value)] = b; });
 
-    picker.addEventListener('change', function (e) {
-        var box = e.target;
-        if (boxes.indexOf(box) === -1 || !box.checked) return;
-
-        // 순환 참조로 무한 반복에 빠지지 않도록 지나온 항목을 기록한다
+    // 상위(중분류 → 대분류)를 거슬러 올라가며 함께 켠다.
+    // 순환 참조로 무한 반복에 빠지지 않도록 지나온 항목을 기록한다.
+    function checkParents(box) {
         var seen = {};
         var parentId = box.getAttribute('data-parent');
         while (parentId && byId[parentId] && !seen[parentId]) {
@@ -383,74 +376,44 @@
             byId[parentId].checked = true;
             parentId = byId[parentId].getAttribute('data-parent');
         }
+    }
+
+    // 상위를 끄면 그 아래 선택돼 있던 하위도 함께 꺼서 앞뒤가 맞게 한다
+    function uncheckChildren(box) {
+        boxes.forEach(function (c) {
+            if (c.getAttribute('data-parent') === String(box.value) && c.checked) {
+                c.checked = false;
+                uncheckChildren(c);
+            }
+        });
+    }
+
+    // 위임 대신 각 체크박스에 직접 걸어, 다른 스크립트가 이벤트를 가로채도 동작하게 한다
+    boxes.forEach(function (b) {
+        b.addEventListener('change', function () {
+            if (b.checked) { checkParents(b); } else { uncheckChildren(b); }
+        });
     });
-})();
+
+    // 수정 화면을 열었을 때 이미 선택된 하위 분류의 상위도 맞춰 둔다
+    boxes.forEach(function (b) { if (b.checked) checkParents(b); });
+
+    // 저장 직전에 한 번 더 보정 — 어떤 경로로 켜졌든 상위가 빠지지 않도록
+    var catForm = picker.closest('form');
+    if (catForm) {
+        catForm.addEventListener('submit', function () {
+            boxes.forEach(function (b) { if (b.checked) checkParents(b); });
+        });
+    }
+});
 </script>
 <script>
-// 상품 편집 가로 탭 — 숨긴 칸도 같은 폼 안에 있어 저장하면 전부 함께 저장된다
-(function () {
-    var tabs = document.querySelectorAll('.ptab');
-    var panes = document.querySelectorAll('.ptab-pane');
-    var KEY = 'korsafety.productTab';
-
-    function show(name, remember) {
-        var found = false;
-        panes.forEach(function (p) {
-            var on = p.getAttribute('data-pane') === name;
-            p.classList.toggle('on', on);
-            if (on) found = true;
-        });
-        if (!found) return false;
-        tabs.forEach(function (t) { t.classList.toggle('on', t.getAttribute('data-tab') === name); });
-        if (remember) { try { localStorage.setItem(KEY, name); } catch (e) {} }
-        return true;
-    }
-
-    tabs.forEach(function (t) {
-        t.addEventListener('click', function () { show(t.getAttribute('data-tab'), true); });
-    });
-
-    // 입력값이 잘못된 칸에 표시를 달고, 그 칸을 먼저 보여 준다
-    var firstBad = null;
-    panes.forEach(function (p) {
-        if (!p.querySelector('.err-msg')) return;
-        var name = p.getAttribute('data-pane');
-        if (!firstBad) firstBad = name;
-        var tab = document.querySelector('.ptab[data-tab="' + name + '"]');
-        if (tab) tab.classList.add('has-error');
-    });
-
-    // 수정 화면에서는 마지막으로 보던 칸을 다시 열어 준다 (새 상품은 늘 기본 정보부터)
-    var saved = null;
-    @if($editing)
-    try { saved = localStorage.getItem(KEY); } catch (e) {}
-    @endif
-    if (!(firstBad && show(firstBad, false)) && !(saved && show(saved, false))) {
-        show('basic', false);
-    }
-
-    // 옵션 개수를 탭에 표시한다
-    function countOptions() {
-        var badge = document.getElementById('optTabCount');
-        if (!badge) return;
-        var rows = document.querySelectorAll('#optBody tr').length;
-        badge.textContent = rows ? rows : '';
-    }
-    countOptions();
-    var body = document.getElementById('optBody');
-    if (body && window.MutationObserver) {
-        new MutationObserver(countOptions).observe(body, { childList: true });
-    }
-
-    // 저장 전에 모든 칸을 검사할 수 있도록, 브라우저 기본 검사에 걸리면 그 칸을 펼친다
-    var form = document.querySelector('form[enctype]');
-    if (form) {
-        form.addEventListener('invalid', function (e) {
-            var pane = e.target.closest('.ptab-pane');
-            if (pane) show(pane.getAttribute('data-pane'), false);
-        }, true);
-    }
-})();
+// 탭 전환 스크립트는 제거했다 — 모든 입력 영역을 한 화면에 펼쳐 두고 한 번에 저장한다.
+// 오류가 있는 영역으로는 바로 스크롤해 알려 준다.
+document.addEventListener('DOMContentLoaded', function () {
+    var firstErr = document.querySelector('.err-msg');
+    if (firstErr) firstErr.scrollIntoView({ block: 'center' });
+});
 </script>
 <script>
     var mi=document.getElementById('mainInput');
