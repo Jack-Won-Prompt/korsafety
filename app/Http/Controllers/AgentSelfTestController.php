@@ -31,7 +31,9 @@ class AgentSelfTestController extends Controller
 
         return response()->json([
             '상품수' => $products->count(),
-            '가장긴이름' => $products->maxNameLength(),
+            // Collection 에 없는 maxNameLength() 를 부르면 BadMethodCallException 이 나므로,
+            // 바로 위에서 이미 구해 둔 $lengths 에서 최댓값을 가져온다.
+            '가장긴이름' => $lengths->max(),
             '평균' => round($lengths->avg(), 1),
         ]);
     }
