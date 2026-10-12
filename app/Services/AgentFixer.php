@@ -56,6 +56,18 @@ class AgentFixer
     /** 한 요청에서 고칠 수 있는 파일 수 */
     private const MAX_FILES_SR = 4;
 
+    /** 고친 전문을 받을 때 모델에게 허용하는 출력 길이 */
+    private const REWRITE_MAX_TOKENS = 32000;
+
+    /**
+     * 전문으로 받을 수 있는 파일 크기 상한 (바이트).
+     *
+     * 파일 전체를 다시 받는 방식이라, 답이 출력 한도에 걸리면 뒤가 잘린 채 돌아온다.
+     * 잘린 줄 모르고 덮어쓰면 파일이 통째로 날아간다(실제로 shop.css 가 그렇게 반토막 났다).
+     * 한도의 절반쯤 되는 크기까지만 손댄다. 넉넉잡아 1토큰 ≈ 3바이트로 본다.
+     */
+    private const MAX_REWRITE_BYTES = 45_000;
+
     private const FIX_TIMEOUT = 300;
 
     private const API_URL = 'https://api.anthropic.com/v1/messages';
@@ -105,8 +117,10 @@ class AgentFixer
                     continue;
                 }
                 $before = file_get_contents($path);
-                if (strlen($before) > 200_000) {
-                    $notes[] = "{$file}: 너무 커서 건너뜀";
+                if (strlen($before) > self::MAX_REWRITE_BYTES) {
+                    $notes[] = "{$file}: 너무 커서 건너뜀 ("
+                        .number_format(strlen($before) / 1024, 1).'KB, 상한 '
+                        .number_format(self::MAX_REWRITE_BYTES / 1024).'KB)';
                     continue;
                 }
                 $after = $this->rewrite($file, $before, $analysis, $task);
@@ -265,13 +279,20 @@ TXT;
             'content-type' => 'application/json',
         ])->timeout(self::FIX_TIMEOUT)->post(self::API_URL, [
             'model' => $model,
-            'max_tokens' => 16000,
+            'max_tokens' => self::REWRITE_MAX_TOKENS,
             'system' => $system,
             'messages' => [['role' => 'user', 'content' => $user]],
         ]);
 
         if (! $res->successful()) {
             throw new \RuntimeException('수정 호출 실패 ('.$res->status().')');
+        }
+
+        // 답이 길이 한도에 걸려 끊겼으면 뒷부분이 통째로 없는 파일이다. 쓰지 않는다.
+        if ($res->json('stop_reason') === 'max_tokens') {
+            Log::warning('Agent 수정 답이 잘려 버렸다', ['파일' => $file]);
+
+            return '';
         }
 
         // 생각 블록이 먼저 올 수 있으므로 text 블록만 골라 잇는다
@@ -287,7 +308,23 @@ TXT;
             $text = $m[1];
         }
 
-        return trim($text) === '' ? '' : rtrim($text)."\n";
+        $text = trim($text) === '' ? '' : rtrim($text)."\n";
+        if ($text === '') {
+            return '';
+        }
+
+        // 고치랬더니 절반이 사라졌다면 끊긴 답이다. 끊김은 stop_reason 으로 늘 잡히지는 않는다.
+        if (strlen($before) >= 2000 && strlen($text) < strlen($before) * 0.75) {
+            Log::warning('Agent 수정 답이 원본보다 크게 짧다', [
+                '파일' => $file,
+                '원본' => strlen($before),
+                '받은 것' => strlen($text),
+            ]);
+
+            return '';
+        }
+
+        return $text;
     }
 
     /**
@@ -327,7 +364,18 @@ TXT;
             }
         }
 
-        // 3) 변경량 — 짚어 둔 파일만, 정해진 줄 수 안쪽
+        // 3) 스타일·스크립트는 문법 검사 도구가 없으니 괄호 짝만이라도 맞는지 본다
+        foreach ($files as $file) {
+            if (! preg_match('~\.(css|js)$~', $file)) {
+                continue;
+            }
+            $body = (string) @file_get_contents(self::WORK_DIR.'/'.$file);
+            if (substr_count($body, '{') !== substr_count($body, '}')) {
+                return "괄호 짝이 맞지 않습니다 ({$file}) — 답이 잘렸을 수 있습니다";
+            }
+        }
+
+        // 4) 변경량 — 짚어 둔 파일만, 정해진 줄 수 안쪽
         $maxFiles = $wide ? self::MAX_FILES_SR : 1;
         $maxLines = $wide ? self::MAX_LINES_SR : self::MAX_LINES;
 
@@ -337,9 +385,11 @@ TXT;
             return '바뀐 파일이 '.count($rows)."개입니다 (상한 {$maxFiles}개)";
         }
 
-        $changed = 0;
+        $changed = $added = $removed = 0;
         foreach ($rows as $row) {
             $cols = preg_split('/\s+/', trim($row));
+            $added += (int) ($cols[0] ?? 0);
+            $removed += (int) ($cols[1] ?? 0);
             $changed += (int) ($cols[0] ?? 0) + (int) ($cols[1] ?? 0);
 
             // 짚어 둔 자리 밖을 건드렸으면 그대로 걸러 낸다
@@ -350,6 +400,12 @@ TXT;
         }
         if (! $wide && $changed > $maxLines) {
             return "바뀐 줄이 너무 많습니다 ({$changed}줄, 상한 {$maxLines}줄)";
+        }
+
+        // 요청 처리는 줄 수로 막지 않는다. 다만 더한 것 없이 지우기만 많이 했다면
+        // 고친 것이 아니라 잘려 나간 것이다. 그것만은 거른다.
+        if ($added + $removed > 0 && $removed >= 50 && $added < $removed * 0.2) {
+            return "지우기만 하는 수정입니다 (+{$added} / -{$removed}) — 답이 잘렸을 수 있습니다";
         }
 
         return null;
