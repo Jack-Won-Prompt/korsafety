@@ -60,13 +60,16 @@ class AgentFixer
     private const REWRITE_MAX_TOKENS = 32000;
 
     /**
-     * 전문으로 받을 수 있는 파일 크기 상한 (바이트).
+     * 손댈 수 있는 파일 크기 상한 (바이트).
      *
-     * 파일 전체를 다시 받는 방식이라, 답이 출력 한도에 걸리면 뒤가 잘린 채 돌아온다.
-     * 잘린 줄 모르고 덮어쓰면 파일이 통째로 날아간다(실제로 shop.css 가 그렇게 반토막 났다).
-     * 한도의 절반쯤 되는 크기까지만 손댄다. 넉넉잡아 1토큰 ≈ 3바이트로 본다.
+     * 예전에는 파일 전체를 다시 받아 덮어썼다. 그래서 답이 출력 한도에 걸리면
+     * 뒤가 잘린 채 돌아왔고, 잘린 줄 모르고 덮어써 shop.css 가 반토막 난 적이 있다.
+     * 그 탓에 45KB 넘는 파일은 아예 손대지 못했다 — 쇼핑몰 스타일 파일이 꼭 거기 걸렸다.
+     *
+     * 지금은 바꿀 조각만 받아 끼워 넣으므로, 파일 크기는 읽어서 보내 줄 수 있는가의
+     * 문제일 뿐이다. 받는 양과 무관해져 상한을 크게 잡는다.
      */
-    private const MAX_REWRITE_BYTES = 45_000;
+    private const MAX_REWRITE_BYTES = 250_000;
 
     private const FIX_TIMEOUT = 300;
 
@@ -247,16 +250,30 @@ class AgentFixer
 
         $system = <<<'TXT'
 당신은 Laravel 12 쇼핑몰의 코드를 고치는 개발자입니다.
-받은 파일에서 지적된 문제만 고쳐, 고친 파일 전체를 그대로 돌려주십시오.
+받은 파일에서 지적된 문제만 고칩니다. 파일 전체를 돌려주지 마십시오.
+바꿀 자리마다 아래 형식의 덩이를 하나씩 보내십시오.
+
+<<<<<<< SEARCH
+(파일에 지금 있는 그대로의 줄)
+=======
+(그 자리를 대신할 줄)
+>>>>>>> REPLACE
+
+SEARCH 규칙 — 이것이 어긋나면 수정은 통째로 버려집니다.
+ · 파일에 있는 글자를 그대로 옮기십시오. 들여쓰기·빈 줄·따옴표·주석까지 한 글자도 다르면 안 됩니다.
+ · 파일 안에서 그 자리에만 있는 덩이여야 합니다. 짧아서 여러 군데 걸릴 것 같으면
+   앞뒤 줄을 더 붙여 길게 잡으십시오.
+ · 줄 번호나 … 같은 줄임 표시를 넣지 마십시오.
+ · 지우기만 할 때는 REPLACE 쪽을 비워 두십시오.
 
 지켜야 할 것
- · 문제와 상관없는 줄은 한 글자도 바꾸지 마십시오. 들여쓰기·빈 줄·주석도 그대로 두십시오.
+ · 문제와 상관없는 자리는 건드리지 마십시오.
  · 구조를 새로 짜거나 새 파일·새 설정을 만들지 마십시오.
  · 결제 금액, 주문 처리, 회원 개인정보, 로그인 인증, DB 구조에 닿는 수정은 하지 마십시오.
-   그런 자리라면 한 글자도 고치지 말고 원본 그대로 돌려주십시오.
+   그런 자리라면 덩이를 하나도 보내지 마십시오.
  · Blade 화면을 고칠 때 @endif@if 처럼 지시문을 붙여 쓰지 마십시오. 화면이 깨집니다.
  · 주석은 한국어로, 왜 그렇게 했는지를 적으십시오.
- · 답은 파일 내용만 보내십시오. 설명도, ``` 울타리도 붙이지 마십시오.
+ · 덩이 말고 다른 말은 쓰지 마십시오.
 TXT;
 
         $user = "고칠 파일: {$file}\n\n"
@@ -264,11 +281,9 @@ TXT;
             .'고치는 법: '.($analysis['how'] ?? '')."\n";
 
         if ($problem) {
-            $user .= "\n[앞서 내놓은 답이 검증에 걸렸습니다]\n걸린 사유: {$problem}\n"
-                ."같은 실수를 되풀이하지 마십시오. 바꾸는 범위를 더 좁히십시오.\n";
-            if ($broken !== null && $broken !== '') {
-                $user .= "걸린 내용의 앞부분:\n".mb_substr($broken, 0, 1500)."\n";
-            }
+            $user .= "\n[앞서 보낸 수정이 걸렸습니다]\n걸린 사유: {$problem}\n"
+                ."같은 실수를 되풀이하지 마십시오. 바꾸는 자리를 더 좁게 잡으십시오.\n"
+                ."SEARCH 를 찾지 못했다는 사유라면, 파일에서 글자를 다시 그대로 옮겨 오십시오.\n";
         }
 
         $user .= "\n— 파일 —\n".$before;
@@ -304,27 +319,69 @@ TXT;
             + (int) ($res->json('usage.input_tokens') ?? 0)
             + (int) ($res->json('usage.output_tokens') ?? 0);
 
-        if (preg_match('~^```[a-z]*\n(.*)\n```\s*$~s', trim($text), $m)) {
-            $text = $m[1];
-        }
-
-        $text = trim($text) === '' ? '' : rtrim($text)."\n";
-        if ($text === '') {
+        $after = $this->applyEdits($before, $text, $file);
+        if ($after === null || $after === $before) {
             return '';
         }
 
-        // 고치랬더니 절반이 사라졌다면 끊긴 답이다. 끊김은 stop_reason 으로 늘 잡히지는 않는다.
-        if (strlen($before) >= 2000 && strlen($text) < strlen($before) * 0.75) {
-            Log::warning('Agent 수정 답이 원본보다 크게 짧다', [
+        // 고치랬더니 절반이 사라졌다면 뭔가 잘못된 것이다. 끼워 넣기로 그럴 일은 드물지만
+        // 큰 덩이를 통째로 지우는 수정이 올 수 있으므로 여기서도 한 번 본다.
+        if (strlen($before) >= 2000 && strlen($after) < strlen($before) * 0.75) {
+            Log::warning('Agent 수정 뒤 파일이 크게 짧아졌다', [
                 '파일' => $file,
                 '원본' => strlen($before),
-                '받은 것' => strlen($text),
+                '고친 뒤' => strlen($after),
             ]);
 
             return '';
         }
 
-        return $text;
+        return $after;
+    }
+
+    /**
+     * 받은 덩이를 파일에 끼워 넣는다.
+     *
+     * SEARCH 가 파일에 없거나 여러 군데 걸리면 어디를 고치라는 것인지 알 수 없다.
+     * 그럴 때는 한 덩이라도 어긋나면 전부 버린다 — 반만 고친 파일이 더 위험하다.
+     *
+     * @return string|null 고친 내용, 끼워 넣지 못하면 null
+     */
+    private function applyEdits(string $before, string $text, string $file): ?string
+    {
+        $pattern = '~^<{5,9} SEARCH\s*?\n(.*?)\n?^={5,9}\s*?\n(.*?)\n?^>{5,9} REPLACE\s*?$~ms';
+        if (! preg_match_all($pattern, $text, $blocks, PREG_SET_ORDER)) {
+            Log::warning('Agent 수정 덩이를 읽지 못했다', ['파일' => $file]);
+
+            return null;
+        }
+
+        $after = $before;
+        foreach ($blocks as $i => $block) {
+            [, $search, $replace] = $block;
+
+            if (trim($search) === '') {
+                Log::warning('Agent 수정 덩이의 찾을 자리가 비어 있다', ['파일' => $file]);
+
+                return null;
+            }
+
+            $hits = substr_count($after, $search);
+            if ($hits !== 1) {
+                Log::warning('Agent 수정 덩이를 그 자리에 놓지 못했다', [
+                    '파일' => $file,
+                    '덩이' => $i + 1,
+                    '걸린 수' => $hits,
+                    '찾던 것' => mb_substr($search, 0, 120),
+                ]);
+
+                return null;
+            }
+
+            $after = str_replace($search, $replace, $after);
+        }
+
+        return $after;
     }
 
     /**
