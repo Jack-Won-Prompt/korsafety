@@ -31,7 +31,7 @@ class AgentSelfTestController extends Controller
 
         return response()->json([
             '상품수' => $products->count(),
-            '가장긴이름' => $products->longestName(),
+            '가장긴이름' => $products->maxNameLength(),
             '평균' => round($lengths->avg(), 1),
         ]);
     }
