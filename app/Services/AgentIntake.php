@@ -36,9 +36,14 @@ class AgentIntake
             }
 
             $key = 'err:'.$log->fingerprint;
-            $already = AgentTask::where('dedupe_key', $key)
-                ->where('created_at', '>=', now()->subDay())->exists();
-            if ($already) {
+            $twin = AgentTask::where('dedupe_key', $key)
+                ->where('created_at', '>=', now()->subDay())
+                ->latest('id')->first();
+            if ($twin) {
+                // 같은 오류를 두 번 접수하지는 않는다. 다만 앞서 접수한 것이 아직 대기 중이면
+                // 그 건으로 일꾼을 다시 깨운다. 안 그러면 신호가 묻혀 일감이 영영 잠든다.
+                self::wake($twin);
+
                 return;
             }
 
@@ -64,6 +69,14 @@ class AgentIntake
     }
 
     /** SR 접수 */
+    /** 아직 대기 중인 일감이면 다시 알려 일꾼을 깨운다 */
+    private static function wake(AgentTask $task): void
+    {
+        if ($task->status === 'pending') {
+            AgentHook::notify($task);
+        }
+    }
+
     public static function sr(ServiceRequest $sr): void
     {
         try {
@@ -72,7 +85,10 @@ class AgentIntake
             }
 
             $key = 'sr:'.$sr->id;
-            if (AgentTask::where('dedupe_key', $key)->exists()) {
+            $twin = AgentTask::where('dedupe_key', $key)->latest('id')->first();
+            if ($twin) {
+                self::wake($twin);
+
                 return;
             }
 
