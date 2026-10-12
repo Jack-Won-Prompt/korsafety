@@ -41,10 +41,9 @@
                             <div class="cat-picker">
                                 @forelse($categories as $c)
                                     <label class="cat-opt d{{ $c->tree_depth }}">
-                                        {{-- 소분류를 고르면 상위 분류도 함께 켜지도록 깊이와 상위 분류 아이디를 표시해 둔다 --}}
+                                        {{-- 소분류를 고르면 상위 분류도 함께 켜지도록 깊이를 표시해 둔다 --}}
                                         <input type="checkbox" name="category_ids[]" value="{{ $c->id }}"
                                                data-depth="{{ $c->tree_depth }}"
-                                               data-parent="{{ $c->parent_id }}"
                                                @checked(in_array($c->id, $selectedCats, true))>
                                         <span>{{ $c->tree_depth ? '└ ' : '' }}{{ $c->name }}</span>
                                         <em>{{ \App\Models\Category::DEPTH_LABELS[$c->tree_depth] }}</em>
@@ -359,29 +358,24 @@
 @push('scripts')
 <script>
 // 카테고리 — 소분류를 고르면 그 위의 중분류·대분류도 자동으로 함께 선택한다.
-// 각 체크박스에 담아 둔 상위 아이디(data-parent)를 따라 올라가므로
-// 목록 정렬이 바뀌어도(출력 순서와 무관하게) 상위 분류를 정확히 찾는다.
+// 목록이 대→중→소 순서로 출력되므로, 체크한 항목에서 위로 거슬러 올라가며
+// 한 단계씩 얕은 깊이를 처음 만나는 항목이 그 항목의 상위 분류가 된다.
 (function () {
     var picker = document.querySelector('.cat-picker');
     if (!picker) return;
     var boxes = Array.prototype.slice.call(picker.querySelectorAll('input[type=checkbox][data-depth]'));
     if (!boxes.length) return;
 
-    // 아이디로 체크박스를 바로 찾을 수 있게 미리 모아 둔다
-    var byId = {};
-    boxes.forEach(function (b) { byId[b.value] = b; });
-
     picker.addEventListener('change', function (e) {
         var box = e.target;
         if (boxes.indexOf(box) === -1 || !box.checked) return;
 
-        // 소 → 중 → 대 순서로 상위를 거슬러 올라가며 켠다.
-        // 자료가 잘못 연결돼 고리가 생겨도 멈추도록 횟수를 제한한다.
-        var guard = 0;
-        var parent = byId[box.getAttribute('data-parent')];
-        while (parent && guard++ < 10) {
-            parent.checked = true;
-            parent = byId[parent.getAttribute('data-parent')];
+        var need = parseInt(box.getAttribute('data-depth'), 10) - 1;
+        for (var i = boxes.indexOf(box) - 1; i >= 0 && need >= 0; i--) {
+            if (parseInt(boxes[i].getAttribute('data-depth'), 10) === need) {
+                boxes[i].checked = true;
+                need--;
+            }
         }
     });
 })();
