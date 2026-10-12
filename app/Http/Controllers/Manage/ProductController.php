@@ -447,14 +447,9 @@ class ProductController extends Controller
         return response()->json(['url' => asset('shop/uploads/'.$this->sellerId().'/editor/'.$name)]);
     }
 
-    /** 대표 이미지 편집기 (회전·밝기·대비·크롭) */
-    public function editImage(Product $product)
-    {
-        $this->authorizeOwner($product);
-        abort_if(! $product->main_image, 404, '편집할 대표 이미지가 없습니다.');
-        return view('manage.products.image-editor', compact('product'));
-    }
-
+    // 대표 이미지 편집기는 별도 페이지(editImage)가 아니라 등록·수정 폼 안의 부분 뷰로 들어갔다.
+    // 편집 결과는 store/update에서 saveEditedMainImage()로 함께 저장하므로 분리 화면용 액션은 제거했다.
+    // 아래 saveImage()는 폼 안 편집기가 즉시 저장(ajax)할 때만 쓴다.
     public function saveImage(Request $request, Product $product)
     {
         $this->authorizeOwner($product);
