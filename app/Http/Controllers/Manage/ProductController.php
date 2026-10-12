@@ -307,6 +307,8 @@ class ProductController extends Controller
         $product->save();
         $this->syncCategories($product, $data);
         $this->handleGallery($product, $request);
+        // 등록 폼 안에 포함된 이미지 편집기 결과도 같은 요청에서 바로 반영한다
+        $this->saveEditedMainImage($product, $request);
         $this->syncOptions($product, $request);
 
         return redirect()->route('manage.products.index')->with('status', '상품이 등록되었습니다.');
@@ -334,6 +336,8 @@ class ProductController extends Controller
             ProductImage::where('product_id', $product->id)->whereIn('id', $removeIds)->delete();
         }
         $this->handleGallery($product, $request);
+        // 수정 폼 안의 이미지 편집기 결과도 같은 요청에서 바로 반영한다 (별도 페이지 이동 불필요)
+        $this->saveEditedMainImage($product, $request);
         $this->syncOptions($product, $request);
 
         return redirect()->route('manage.products.edit', $product)->with('status', '상품이 수정되었습니다.');
@@ -686,6 +690,34 @@ class ProductController extends Controller
         if ($request->hasFile('main_image')) {
             $product->main_image = $this->saveUpload($request->file('main_image'));
         }
+    }
+
+    /**
+     * 등록·수정 폼에 함께 들어 있는 이미지 편집기가 보낸 대표 이미지(data URL)를
+     * 같은 요청에서 저장한다 — 별도 이미지 편집 페이지로 이동하지 않아도 되도록 합쳤다.
+     * 값이 없거나 형식이 맞지 않으면 아무것도 하지 않고 기존 대표 이미지를 그대로 둔다.
+     */
+    private function saveEditedMainImage(Product $product, Request $request): void
+    {
+        // 폼 안에 끼워 넣은 편집기는 edited_image(없으면 image) 이름의 숨은 칸으로 값을 보낸다
+        $data = (string) ($request->input('edited_image') ?? $request->input('image') ?? '');
+        if ($data === '' || ! preg_match('/^data:image\/(png|jpeg|jpg|webp);base64,/', $data, $m)) {
+            return;
+        }
+
+        $ext = $m[1] === 'jpeg' ? 'jpg' : $m[1];
+        $bin = base64_decode(substr($data, strpos($data, ',') + 1), true);
+        if ($bin === false || strlen($bin) < 100) {
+            return; // 데이터가 깨졌으면 기존 이미지를 유지한다
+        }
+
+        $dir = public_path('shop/uploads/'.$this->sellerId());
+        if (! is_dir($dir)) @mkdir($dir, 0775, true);
+        $name = 'edit_'.date('Ymd_His').'_'.Str::lower(Str::random(5)).'.'.$ext;
+        file_put_contents($dir.'/'.$name, $bin);
+
+        $product->main_image = '/shop/uploads/'.$this->sellerId().'/'.$name;
+        $product->save();
     }
 
     /**

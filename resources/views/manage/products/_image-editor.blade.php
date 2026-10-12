@@ -2,8 +2,15 @@
     대표 이미지 편집기 (회전 · 밝기 · 대비 · 크롭)
     $product : 대상 상품
     $ajax    : true면 저장 후 페이지 이동 없이 결과 URL을 돌려받는다 (모달용)
+    $embed   : true면 상품 등록/수정 폼 안에 그대로 끼워 넣어 함께 전송한다
 --}}
-@php $ajax = $ajax ?? false; @endphp
+@php
+    $ajax  = $ajax ?? false;
+    // 등록/수정 폼 내부에 포함되는 경우에는 폼 중첩·별도 저장 버튼·레이아웃 의존을 두지 않는다
+    $embed = $embed ?? false;
+    // 등록 화면처럼 아직 저장된 대표 이미지가 없을 수 있으므로 빈 값을 허용한다
+    $edSrc = (isset($product) && $product && $product->main_image) ? asset($product->main_image) : '';
+@endphp
 <div class="ed-grid">
     <div>
         <div class="ed-stage">
@@ -16,9 +23,14 @@
     </div>
 
     <div>
-        <form action="{{ route('manage.products.image.save', $product) }}" method="post" id="edForm"
-              data-ajax="{{ $ajax ? '1' : '' }}" data-src="{{ asset($product->main_image) }}">
+        @if($embed)
+            {{-- 폼 안에 끼워 넣을 때는 form 중첩을 피하기 위해 div 로 감싼다 --}}
+            <div id="edForm" data-ajax="" data-embed="1" data-src="{{ $edSrc }}">
+        @else
+            <form action="{{ route('manage.products.image.save', $product) }}" method="post" id="edForm"
+                  data-ajax="{{ $ajax ? '1' : '' }}" data-embed="" data-src="{{ $edSrc }}">
             @csrf
+        @endif
             <input type="hidden" name="image" id="edData">
             <div class="ed-ctrl">
                 <h3>이미지 보정</h3>
@@ -54,13 +66,22 @@
 
                 <div class="ed-actions">
                     <button type="button" class="btn" id="resetBtn" style="flex:1">초기화</button>
-                    <button type="submit" class="btn btn-accent" id="saveBtn" style="flex:2">저장</button>
+                    @unless($embed)
+                        <button type="submit" class="btn btn-accent" id="saveBtn" style="flex:2">저장</button>
+                    @endunless
                 </div>
+                @if($embed)
+                    <div class="hint" style="margin-top:10px">보정한 이미지는 아래 [저장] 버튼으로 상품 정보와 함께 저장됩니다.</div>
+                @endif
             </div>
+        @if($embed)
+            </div>
+        @else
             @unless($ajax)
                 <a href="{{ route('manage.products.edit', $product) }}" class="btn" style="width:100%;margin-top:12px">← 상품 편집으로</a>
             @endunless
-        </form>
+            </form>
+        @endif
     </div>
 </div>
 
@@ -70,11 +91,13 @@
     if(!form) return;
     var SRC = form.dataset.src;
     var AJAX = form.dataset.ajax === '1';
+    var EMBED = form.dataset.embed === '1';
     var canvas = document.getElementById('edCanvas');
     var ctx = canvas.getContext('2d');
     var wrap = document.getElementById('edWrap');
     var cropBox = document.getElementById('edCrop');
     var base = new Image();
+    var loaded = false;                      // 편집할 원본이 준비됐는지
     var rot = 0, bri = 100, con = 100;      // rot = 미세(-45~45)
     var quarter = 0;                         // 90° 단위 누적
     var cropping = false, cropRect = null, dragStart = null;
@@ -97,8 +120,11 @@
         ctx.restore();
     }
 
-    base.onload = render;
-    base.src = SRC;
+    function markLoaded(){ loaded = true; render(); }
+
+    base.onload = markLoaded;
+    // 등록 화면처럼 원본이 없을 수도 있으므로 값이 있을 때만 로드한다
+    if(SRC){ base.src = SRC; }
 
     function bind(id, cb){ document.getElementById(id).addEventListener('input', cb); }
     bind('rot', function(){ rot=+this.value; document.getElementById('rotV').textContent=totalDeg()+'°'; render(); });
@@ -108,7 +134,10 @@
     document.getElementById('rotR').onclick=function(){ quarter=(quarter+1)%4; document.getElementById('rotV').textContent=totalDeg()+'°'; render(); };
 
     function resetAll(src){
-        base = new Image(); base.onload=render; base.src = src || SRC;
+        base = new Image(); base.onload=markLoaded;
+        loaded = false;
+        var next = src || SRC;
+        if(next){ base.src = next; }
         rot=0; quarter=0; bri=100; con=100;
         document.getElementById('rot').value=0; document.getElementById('bri').value=100; document.getElementById('con').value=100;
         document.getElementById('rotV').textContent='0°'; document.getElementById('briV').textContent='100%'; document.getElementById('conV').textContent='100%';
@@ -164,6 +193,7 @@
         base.onload=function(){ quarter=0; rot=0; bri=100; con=100;
             document.getElementById('rot').value=0; document.getElementById('bri').value=100; document.getElementById('con').value=100;
             document.getElementById('rotV').textContent='0°'; document.getElementById('briV').textContent='100%'; document.getElementById('conV').textContent='100%';
+            loaded = true;
             render();
         };
         base.src=url;
@@ -172,9 +202,25 @@
     };
 
     // ---- save ----
-    form.addEventListener('submit', function(e){
+    // 편집 결과를 hidden 입력에 담는다. 원본이 없으면 빈 값으로 두어 서버가 무시하게 한다.
+    function fillData(){
+        if(!loaded){ document.getElementById('edData').value=''; return false; }
         render();
         document.getElementById('edData').value = canvas.toDataURL('image/jpeg', 0.92);
+        return true;
+    }
+
+    if(EMBED){
+        // 상품 등록/수정 폼과 한 번에 전송되므로 부모 폼의 submit 시점에만 값을 채운다
+        var parentForm = form.closest('form');
+        if(parentForm){
+            parentForm.addEventListener('submit', function(){ fillData(); });
+        }
+        return;
+    }
+
+    form.addEventListener('submit', function(e){
+        fillData();
         if(!AJAX) return;   // 단독 페이지는 그대로 폼 전송
 
         e.preventDefault();

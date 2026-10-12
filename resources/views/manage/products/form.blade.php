@@ -41,7 +41,9 @@
                             <div class="cat-picker">
                                 @forelse($categories as $c)
                                     <label class="cat-opt d{{ $c->tree_depth }}">
+                                        {{-- 소분류를 고르면 상위 분류도 함께 켜지도록 깊이를 표시해 둔다 --}}
                                         <input type="checkbox" name="category_ids[]" value="{{ $c->id }}"
+                                               data-depth="{{ $c->tree_depth }}"
                                                @checked(in_array($c->id, $selectedCats, true))>
                                         <span>{{ $c->tree_depth ? '└ ' : '' }}{{ $c->name }}</span>
                                         <em>{{ \App\Models\Category::DEPTH_LABELS[$c->tree_depth] }}</em>
@@ -50,7 +52,7 @@
                                     <div class="t-sub" style="padding:8px">등록된 카테고리가 없습니다.</div>
                                 @endforelse
                             </div>
-                            <div class="hint">여러 개를 선택할 수 있습니다. 선택한 것 중 가장 하위 분류가 대표 카테고리가 됩니다.</div>
+                            <div class="hint">여러 개를 선택할 수 있습니다. 소분류를 고르면 상위 분류가 자동으로 함께 선택되며, 선택한 것 중 가장 하위 분류가 대표 카테고리가 됩니다.</div>
                             @error('category_ids')<div class="err-msg">{{ $message }}</div>@enderror
                         </div>
                     </div>
@@ -354,6 +356,30 @@
 @endpush
 
 @push('scripts')
+<script>
+// 카테고리 — 소분류를 고르면 그 위의 중분류·대분류도 자동으로 함께 선택한다.
+// 목록이 대→중→소 순서로 출력되므로, 체크한 항목에서 위로 거슬러 올라가며
+// 한 단계씩 얕은 깊이를 처음 만나는 항목이 그 항목의 상위 분류가 된다.
+(function () {
+    var picker = document.querySelector('.cat-picker');
+    if (!picker) return;
+    var boxes = Array.prototype.slice.call(picker.querySelectorAll('input[type=checkbox][data-depth]'));
+    if (!boxes.length) return;
+
+    picker.addEventListener('change', function (e) {
+        var box = e.target;
+        if (boxes.indexOf(box) === -1 || !box.checked) return;
+
+        var need = parseInt(box.getAttribute('data-depth'), 10) - 1;
+        for (var i = boxes.indexOf(box) - 1; i >= 0 && need >= 0; i--) {
+            if (parseInt(boxes[i].getAttribute('data-depth'), 10) === need) {
+                boxes[i].checked = true;
+                need--;
+            }
+        }
+    });
+})();
+</script>
 <script>
 // 상품 편집 가로 탭 — 숨긴 칸도 같은 폼 안에 있어 저장하면 전부 함께 저장된다
 (function () {
