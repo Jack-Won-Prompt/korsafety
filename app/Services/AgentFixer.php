@@ -48,8 +48,13 @@ class AgentFixer
         'app/http/controllers/emailverificationcontroller.php',
     ];
 
-    /** 바뀐 줄 수 상한 (추가 + 삭제) */
+    /** 바뀐 줄 수 상한 (추가 + 삭제) — 예고 없이 터진 오류는 좁게, 받아 둔 요청은 넓게 */
     private const MAX_LINES = 60;
+
+    private const MAX_LINES_SR = 400;
+
+    /** 한 요청에서 고칠 수 있는 파일 수 */
+    private const MAX_FILES_SR = 4;
 
     private const FIX_TIMEOUT = 300;
 
@@ -62,10 +67,19 @@ class AgentFixer
      */
     public function fix(AgentTask $task, array $analysis): array
     {
-        $file = $this->normalizePath((string) ($analysis['file'] ?? ''));
+        $isSr = $task->type === 'sr';
 
-        if ($file === '' || ! $this->allowed($file)) {
-            return $this->out(false, true, '손대지 않는 자리입니다'.($file ? " ({$file})" : '').'. 담당자 확인이 필요합니다.');
+        $files = [];
+        foreach ((array) ($analysis['files'] ?? [$analysis['file'] ?? '']) as $one) {
+            $path = $this->normalizePath((string) $one);
+            if ($path !== '' && $this->allowed($path) && ! in_array($path, $files, true)) {
+                $files[] = $path;
+            }
+        }
+        $files = array_slice($files, 0, $isSr ? self::MAX_FILES_SR : 1);
+
+        if (! $files) {
+            return $this->out(false, true, '손대지 않는 자리입니다. 담당자 확인이 필요합니다.');
         }
         if (! is_dir(self::WORK_DIR.'/.git')) {
             return $this->out(false, true, '작업용 사본이 준비되지 않아 수정하지 않았습니다.');
@@ -82,31 +96,60 @@ class AgentFixer
             $this->git(['checkout', '-B', 'agent-work', 'origin/main']);
             $this->git(['reset', '--hard', 'origin/main']);
 
-            $path = self::WORK_DIR.'/'.$file;
-            if (! is_file($path)) {
-                return $this->out(false, true, "파일을 찾지 못했습니다 ({$file}).");
-            }
-            $before = file_get_contents($path);
-            if (strlen($before) > 200_000) {
-                return $this->out(false, true, '파일이 너무 커서 자동 수정 대상이 아닙니다.');
+            // 2) 파일마다 고친 전문을 받는다 (조각 수정은 줄이 어긋나기 쉬워 전문으로 받는다)
+            $touched = $notes = [];
+            foreach ($files as $file) {
+                $path = self::WORK_DIR.'/'.$file;
+                if (! is_file($path)) {
+                    $notes[] = "{$file}: 파일 없음";
+                    continue;
+                }
+                $before = file_get_contents($path);
+                if (strlen($before) > 200_000) {
+                    $notes[] = "{$file}: 너무 커서 건너뜀";
+                    continue;
+                }
+                $after = $this->rewrite($file, $before, $analysis, $task);
+                if ($after === '' || $after === $before) {
+                    $notes[] = "{$file}: 고칠 내용 없음";
+                    continue;
+                }
+                file_put_contents($path, $after);
+                $touched[] = $file;
             }
 
-            // 2) 고친 파일 전문을 받는다 (조각 수정은 줄이 어긋나기 쉬워 전문으로 받는다)
-            $after = $this->rewrite($file, $before, $analysis, $task);
-            if ($after === '' || $after === $before) {
-                return $this->out(true, false, '고칠 내용을 만들지 못해 그대로 두었습니다.');
-            }
-            file_put_contents($path, $after);
-
-            // 3) 검증 — 문법, 화면 변환, 변경량
-            if ($problem = $this->verify($file)) {
+            if (! $touched) {
                 $this->revertWorkTree();
 
-                return $this->out(true, false, '검증에서 걸러져 되돌렸습니다: '.$problem);
+                return $this->out(true, false, '고칠 내용을 만들지 못해 그대로 두었습니다. '.implode(' / ', $notes));
+            }
+
+            // 3) 검증 — 문법, 화면 변환, 변경량.
+            //    걸리면 무엇이 걸렸는지 알려 주고 한 번 더 받아 본다. 그래도 걸리면 되돌린다.
+            if ($problem = $this->verify($touched, $isSr)) {
+                $retried = [];
+                foreach ($touched as $file) {
+                    $path = self::WORK_DIR.'/'.$file;
+                    $broken = (string) file_get_contents($path);
+                    $this->git(['checkout', '--', $file]);
+                    $before = (string) file_get_contents($path);
+                    $after = $this->rewrite($file, $before, $analysis, $task, $problem, $broken);
+                    if ($after !== '' && $after !== $before) {
+                        file_put_contents($path, $after);
+                        $retried[] = $file;
+                    }
+                }
+                $again = $retried ? $this->verify($retried, $isSr) : '다시 고치지 못했습니다.';
+                if ($again) {
+                    $this->revertWorkTree();
+
+                    return $this->out(true, false, '검증에서 걸러져 되돌렸습니다: '.$again);
+                }
+                $touched = $retried;
             }
 
             // 4) 저장소에 올린다
-            $commit = $this->publish($file, $analysis, $task);
+            $commit = $this->publish($touched, $analysis, $task);
             if (! $commit) {
                 $this->revertWorkTree();
 
@@ -123,7 +166,8 @@ class AgentFixer
             }
 
             return ['tried' => true, 'fixed' => true, 'blocked' => false, 'commit' => $commit,
-                'message' => '수정해 운영에 반영했습니다.'];
+                'message' => '수정해 운영에 반영했습니다 ('.implode(', ', $touched).').'
+                    .($notes ? ' 못 한 것 — '.implode(' / ', $notes) : '')];
         } catch (Throwable $e) {
             report($e);
             $this->revertWorkTree();
@@ -167,9 +211,20 @@ class AgentFixer
         return false;
     }
 
-    /** 고친 파일 전문을 받아 온다 */
-    private function rewrite(string $file, string $before, array $analysis, AgentTask $task): string
-    {
+    /**
+     * 고친 파일 전문을 받아 온다.
+     *
+     * $problem 이 있으면 앞서 내놓은 답이 검증에 걸렸다는 뜻이다.
+     * 무엇이 걸렸는지와 걸린 내용을 함께 주어 같은 실수를 되풀이하지 않게 한다.
+     */
+    private function rewrite(
+        string $file,
+        string $before,
+        array $analysis,
+        AgentTask $task,
+        ?string $problem = null,
+        ?string $broken = null
+    ): string {
         $key = AgentWorker::apiKey();
         $model = (string) \App\Models\Setting::get('agent_model_fix');
         if (! in_array($model, AgentWorker::MODELS, true)) {
@@ -192,8 +247,17 @@ TXT;
 
         $user = "고칠 파일: {$file}\n\n"
             .'원인: '.($analysis['cause'] ?? '')."\n"
-            .'고치는 법: '.($analysis['how'] ?? '')."\n\n"
-            ."— 파일 —\n".$before;
+            .'고치는 법: '.($analysis['how'] ?? '')."\n";
+
+        if ($problem) {
+            $user .= "\n[앞서 내놓은 답이 검증에 걸렸습니다]\n걸린 사유: {$problem}\n"
+                ."같은 실수를 되풀이하지 마십시오. 바꾸는 범위를 더 좁히십시오.\n";
+            if ($broken !== null && $broken !== '') {
+                $user .= "걸린 내용의 앞부분:\n".mb_substr($broken, 0, 1500)."\n";
+            }
+        }
+
+        $user .= "\n— 파일 —\n".$before;
 
         $res = Http::withHeaders([
             'x-api-key' => $key,
@@ -226,19 +290,29 @@ TXT;
         return trim($text) === '' ? '' : rtrim($text)."\n";
     }
 
-    /** 검증 — 통과하면 null, 걸리면 사유 */
-    public function verify(string $file): ?string
+    /**
+     * 검증 — 통과하면 null, 걸리면 사유.
+     *
+     * @param  array<int, string>|string  $files  고친 파일들
+     */
+    public function verify(array|string $files, bool $wide = false): ?string
     {
+        $files = (array) $files;
+
         // 1) PHP 문법
-        if (str_ends_with($file, '.php')) {
+        foreach ($files as $file) {
+            if (! str_ends_with($file, '.php')) {
+                continue;
+            }
             $lint = Process::path(self::WORK_DIR)->timeout(60)->run(['php', '-l', $file]);
             if (! $lint->successful()) {
-                return '문법 오류 — '.mb_substr(trim($lint->output().$lint->errorOutput()), 0, 200);
+                return "문법 오류 ({$file}) — ".mb_substr(trim($lint->output().$lint->errorOutput()), 0, 200);
             }
         }
 
         // 2) 화면은 변환한 뒤 PHP 문법까지 본다 — 변환만으로는 깨진 지시문을 잡지 못한다
-        if (str_ends_with($file, '.blade.php')) {
+        $hasBlade = (bool) array_filter($files, fn ($f) => str_ends_with($f, '.blade.php'));
+        if ($hasBlade) {
             Process::path(self::WORK_DIR)->timeout(120)->run('php artisan view:clear');
             $compile = Process::path(self::WORK_DIR)->timeout(240)->run('php artisan view:cache 2>&1');
             if (! $compile->successful()) {
@@ -253,31 +327,48 @@ TXT;
             }
         }
 
-        // 3) 변경량 — 파일 하나, 정해진 줄 수 안쪽
+        // 3) 변경량 — 짚어 둔 파일만, 정해진 줄 수 안쪽
+        $maxFiles = $wide ? self::MAX_FILES_SR : 1;
+        $maxLines = $wide ? self::MAX_LINES_SR : self::MAX_LINES;
+
         $stat = Process::path(self::WORK_DIR)->timeout(60)->run(['git', 'diff', '--numstat']);
-        $lines = array_values(array_filter(explode("\n", trim($stat->output()))));
-        if (count($lines) !== 1) {
-            return '바뀐 파일이 '.count($lines).'개입니다 (1개만 허용)';
+        $rows = array_values(array_filter(explode("\n", trim($stat->output()))));
+        if (count($rows) > $maxFiles) {
+            return '바뀐 파일이 '.count($rows)."개입니다 (상한 {$maxFiles}개)";
         }
-        $cols = preg_split('/\s+/', trim($lines[0]));
-        $changed = (int) ($cols[0] ?? 0) + (int) ($cols[1] ?? 0);
-        if ($changed > self::MAX_LINES) {
-            return "바뀐 줄이 너무 많습니다 ({$changed}줄, 상한 ".self::MAX_LINES.'줄)';
+
+        $changed = 0;
+        foreach ($rows as $row) {
+            $cols = preg_split('/\s+/', trim($row));
+            $changed += (int) ($cols[0] ?? 0) + (int) ($cols[1] ?? 0);
+
+            // 짚어 둔 자리 밖을 건드렸으면 그대로 걸러 낸다
+            $path = trim((string) ($cols[2] ?? ''));
+            if ($path !== '' && ! in_array($path, $files, true)) {
+                return "짚지 않은 파일이 바뀌었습니다 ({$path})";
+            }
+        }
+        if ($changed > $maxLines) {
+            return "바뀐 줄이 너무 많습니다 ({$changed}줄, 상한 {$maxLines}줄)";
         }
 
         return null;
     }
 
-    /** 커밋하고 올린다 — 성공하면 커밋 해시 */
-    private function publish(string $file, array $analysis, AgentTask $task): ?string
+    /**
+     * 커밋하고 올린다 — 성공하면 커밋 해시.
+     *
+     * @param  array<int, string>  $files  고친 파일들
+     */
+    private function publish(array $files, array $analysis, AgentTask $task): ?string
     {
         $title = mb_substr(trim((string) ($analysis['how'] ?? '자동 수정')), 0, 60);
         $message = $title." (Agent 자동 수정)\n\n"
             .'원인: '.($analysis['cause'] ?? '-')."\n"
-            ."고친 자리: {$file}\n"
+            .'고친 자리: '.implode(', ', $files)."\n"
             ."작업 #{$task->id} · {$task->type_label} {$task->ref_id} · 확신 ".($analysis['confidence'] ?? '-')."\n";
 
-        $this->git(['add', $file]);
+        $this->git(array_merge(['add'], $files));
 
         $commit = Process::path(self::WORK_DIR)->timeout(120)->input($message)->run([
             'git', '-c', 'user.name=KOR SAFETY Agent', '-c', 'user.email=agent@korsafety.co.kr',
