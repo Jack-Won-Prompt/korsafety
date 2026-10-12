@@ -348,7 +348,7 @@ TXT;
                 return "짚지 않은 파일이 바뀌었습니다 ({$path})";
             }
         }
-        if ($changed > $maxLines) {
+        if (! $wide && $changed > $maxLines) {
             return "바뀐 줄이 너무 많습니다 ({$changed}줄, 상한 {$maxLines}줄)";
         }
 
