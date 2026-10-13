@@ -109,6 +109,7 @@
             </div>
             <div class="hint" style="margin-top:12px">
                 각 사이트에서 발급한 <b>content 값만</b> 넣으면 됩니다(메타 태그 전체를 붙여넣지 마세요). 저장하면 모든 쇼핑몰 페이지 &lt;head&gt;에 들어갑니다.<br>
+                www 주소와 그냥 주소를 따로 등록했다면 코드가 두 개 나옵니다. 그럴 때는 <b>쉼표로 이어서</b> 넣으세요 — 둘 다 들어갑니다.<br>
                 사이트맵 주소 — <a href="{{ url('/sitemap.xml') }}" target="_blank"><b>{{ url('/sitemap.xml') }}</b></a> (네이버·구글에 이 주소를 제출하세요)
             </div>
         </div>

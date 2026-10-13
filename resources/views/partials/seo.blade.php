@@ -32,13 +32,15 @@
 <meta name="twitter:description" content="{{ $seoDesc }}">
 <meta name="twitter:image" content="{{ $seoImage }}">
 
-{{-- 검색엔진 사이트 소유확인 (관리 콘솔 › 사이트 설정에서 입력) --}}
-@if($code = \App\Models\Setting::get('seo_naver_verify'))
+{{-- 검색엔진 사이트 소유확인 (관리 콘솔 › 사이트 설정에서 입력)
+     한 도메인을 www·apex 처럼 여러 주소로 등록하면 코드가 주소마다 따로 나온다.
+     하나만 두면 다른 쪽 소유확인이 풀리므로, 쉼표나 줄바꿈으로 여럿 넣을 수 있게 한다. --}}
+@foreach(preg_split('/[\s,]+/', (string) \App\Models\Setting::get('seo_naver_verify'), -1, PREG_SPLIT_NO_EMPTY) as $code)
     <meta name="naver-site-verification" content="{{ $code }}">
-@endif
-@if($code = \App\Models\Setting::get('seo_google_verify'))
+@endforeach
+@foreach(preg_split('/[\s,]+/', (string) \App\Models\Setting::get('seo_google_verify'), -1, PREG_SPLIT_NO_EMPTY) as $code)
     <meta name="google-site-verification" content="{{ $code }}">
-@endif
+@endforeach
 
 {{-- 회사 정보 · 사이트 검색 (구글 검색결과의 검색창) --}}
 @php
