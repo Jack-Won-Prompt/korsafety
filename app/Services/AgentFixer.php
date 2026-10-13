@@ -22,7 +22,10 @@ use Throwable;
 class AgentFixer
 {
     /** 작업용 사본 — 서빙 폴더와 분리한다 */
-    private const WORK_DIR = '/home/ubuntu/www/agent-work';
+    private const WORK_DIR = '/home/ubuntu/www/korsafety-agent-work';
+
+    /** 작업용 사본이 가리켜야 할 저장소 — 이것이 아니면 한 글자도 건드리지 않는다 */
+    private const REPO = 'korsafety';
 
     /** 운영 서빙 폴더 */
     private const LIVE_DIR = '/home/ubuntu/www/korsafety';
@@ -100,7 +103,10 @@ class AgentFixer
             return $this->out(false, true, '손대지 않는 자리입니다. 담당자 확인이 필요합니다.');
         }
         if (! is_dir(self::WORK_DIR.'/.git')) {
-            return $this->out(false, true, '작업용 사본이 준비되지 않아 수정하지 않았습니다.');
+            return $this->out(false, true, '작업용 사본이 준비되지 않아 수정하지 않았습니다. ('.self::WORK_DIR.')');
+        }
+        if ($wrong = $this->wrongClone()) {
+            return $this->out(false, true, $wrong);
         }
 
         $lock = $this->lock();
@@ -209,6 +215,36 @@ class AgentFixer
         } finally {
             $this->unlock($lock);
         }
+    }
+
+    /**
+     * 작업용 사본이 우리 저장소를 가리키는지 본다.
+     *
+     * 한 서버에 여러 프로젝트가 올라가 있어, 작업 폴더가 다른 프로젝트 것으로
+     * 바뀌어 있을 수 있다. 그대로 두면 남의 코드에서 우리 파일을 찾다 헛돌고,
+     * 더 나쁘게는 우리 코드를 남의 저장소에 밀어 넣게 된다.
+     *
+     * @return string|null 우리 것이면 null, 아니면 손대지 않는 사유
+     */
+    private function wrongClone(): ?string
+    {
+        $res = Process::path(self::WORK_DIR)->timeout(30)
+            ->run(['git', 'remote', 'get-url', 'origin']);
+
+        $url = trim($res->output());
+        if (! $res->successful() || $url === '') {
+            return '작업용 사본의 원격 주소를 읽지 못해 손대지 않았습니다.';
+        }
+
+        // 주소에 열쇠가 섞여 있을 수 있으므로 기록에 그대로 남기지 않는다
+        if (! str_contains(mb_strtolower($url), self::REPO)) {
+            $safe = preg_replace('~//[^@/]*@~', '//***@', $url);
+            Log::error('Agent 작업용 사본이 남의 저장소를 가리킨다', ['원격' => $safe]);
+
+            return '작업용 사본이 우리 저장소가 아니라 다른 곳('.basename($safe).')을 가리켜 손대지 않았습니다.';
+        }
+
+        return null;
     }
 
     /** 저장소 기준 경로로 다듬는다 */

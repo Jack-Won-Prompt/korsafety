@@ -224,7 +224,7 @@ TXT;
      */
     private function analyzeSr(AgentTask $task): array
     {
-        $sr = ServiceRequest::with('user')->find($task->ref_id);
+        $sr = ServiceRequest::with(['user', 'replies.user'])->find($task->ref_id);
         if (! $sr) {
             throw new \RuntimeException('SR 을 찾을 수 없습니다.');
         }
@@ -232,6 +232,10 @@ TXT;
         $body = "[요청]\n제목: {$sr->title}\n분류: {$sr->category}\n중요도: {$sr->priority}\n"
             .'올린 사람: '.($sr->user->name ?? '알 수 없음')."\n등록: {$sr->created_at}\n\n"
             ."내용:\n".mb_substr(trim(strip_tags((string) $sr->content)), 0, 3000)."\n";
+
+        // 부탁은 답글로 덧붙는 일이 잦다. 본문만 읽으면 뒤에 더한 요청을 통째로 놓친다.
+        // (실제로 "엑셀에 매입가 칸도" 라는 부탁이 답글로 들어와 빠진 적이 있다)
+        $body .= $this->srReplies($sr);
 
         $model = (string) Setting::get('agent_model');
 
@@ -252,6 +256,28 @@ TXT;
         $analysis['_tokens'] = (int) ($analysis['_tokens'] ?? 0) + (int) ($locate['_tokens'] ?? 0);
 
         return $this->groundFiles($analysis);
+    }
+
+    /**
+     * 오간 글을 덧붙인다.
+     *
+     * 우리가 쓴 답변도 함께 보여 준다. 무엇을 이미 약속했는지 알아야
+     * 같은 말을 되풀이하거나 이미 한 일을 다시 하지 않는다.
+     */
+    private function srReplies(ServiceRequest $sr): string
+    {
+        if ($sr->replies->isEmpty()) {
+            return '';
+        }
+
+        $out = "\n[그 뒤 오간 글 — 여기 덧붙은 부탁도 요청의 일부입니다]\n";
+        foreach ($sr->replies->sortBy('id')->take(20) as $reply) {
+            $who = $reply->is_staff ? '담당자' : '요청자';
+            $out .= "({$who} {$reply->created_at}) "
+                .mb_substr(trim(strip_tags((string) $reply->body)), 0, 800)."\n";
+        }
+
+        return $out;
     }
 
     /** ① 찾을 말 고르기 */
