@@ -500,16 +500,26 @@ class ProductController extends Controller
     /** CSV 헤더 (엑셀 호환, UTF-8) */
     private const CSV_HEADER = ['상품ID', '상품코드', 'SKU', '상품명', '브랜드', '카테고리', '판매가', '할인가', '협력사 할인가', '재고', '품절(1=품절)', '노출(1=노출)', '대표이미지경로'];
 
-    /** 전체 품목 엑셀(CSV) 다운로드 — 현재 스토어 스코프 */
-    public function exportCsv()
+    /** 품목 엑셀(CSV) 다운로드 — 현재 스토어 스코프 + 목록에서 선택한 카테고리 필터 */
+    public function exportCsv(Request $request)
     {
         $filename = 'products_'.date('Ymd_His').'.csv';
-        $products = $this->scoped()->with('category')->orderBy('id')->get();
+        $query = $this->scoped()->with('category');
+
+        // 목록 화면과 같은 기준으로 거른다 — 상위 분류를 고르면 하위 분류 상품까지 포함
+        $categoryId = $request->query('category_id');
+        if ($categoryId) {
+            $catIds = optional(Category::find($categoryId))->descendantIds() ?: [(int) $categoryId];
+            $query->whereHas('categories', fn ($w) => $w->whereIn('categories.id', $catIds));
+        }
+
+        $products = $query->orderBy('id')->get();
 
         return response()->streamDownload(function () use ($products) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // UTF-8 BOM (엑셀 한글 깨짐 방지)
-            fputcsv($out, self::CSV_HEADER);
+            // 매입가는 맨 뒤에 붙인다 — 앞쪽 열 순서를 그대로 둬야 업로드 양식과 어긋나지 않는다
+            fputcsv($out, array_merge(self::CSV_HEADER, ['매입가']));
             foreach ($products as $p) {
                 fputcsv($out, [
                     $p->id,
@@ -525,6 +535,7 @@ class ProductController extends Controller
                     $p->is_soldout ? 1 : 0,
                     $p->is_active ? 1 : 0,
                     $p->main_image,
+                    $p->cost_price,
                 ]);
             }
             fclose($out);

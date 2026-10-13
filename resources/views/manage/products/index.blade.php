@@ -7,7 +7,8 @@
         <a href="{{ route('manage.categories.index') }}" class="btn btn-sm">카테고리 관리</a>
     @endif
     <a href="{{ route('manage.products.trash') }}" class="btn btn-sm">🗑 삭제한 상품</a>
-    <a href="{{ route('manage.products.export') }}" class="btn btn-sm">⭳ 엑셀 다운로드</a>
+    {{-- 목록에 걸린 카테고리 필터를 그대로 넘겨, 선택한 카테고리 상품만 내려받게 한다 --}}
+    <a href="{{ route('manage.products.export', ['category_id' => request('category_id')]) }}" class="btn btn-sm">⭳ 엑셀 다운로드</a>
     <button type="button" class="btn btn-sm" onclick="var b=document.getElementById('imp-box');b.hidden=!b.hidden">⭱ 엑셀 업로드</button>
     <a href="{{ route('manage.products.create') }}" class="btn btn-accent btn-sm">+ 상품 등록</a>
 @endsection
