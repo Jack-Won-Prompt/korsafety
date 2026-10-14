@@ -31,7 +31,13 @@ class AgentWorker
 
     private const API_URL = 'https://api.anthropic.com/v1/messages';
 
-    private const ANALYZE_TIMEOUT = 120;
+    /**
+     * 한 번 묻고 기다리는 시간.
+     *
+     * 생각이 켜져 있고 한도를 32000 까지 주다 보니 한 번 답하는 데 2분을 넘기는 일이 생긴다.
+     * 실제로 120초에서 끊겨 멀쩡히 돌던 일감이 실패로 끝났다. 고치는 쪽(300초)과 맞춘다.
+     */
+    private const ANALYZE_TIMEOUT = 300;
 
     /** 사람이 봐야 하는 갈래 — 이 값이 돌아오면 코드를 건드리지 않는다 */
     public const HUMAN_ONLY = ['payment', 'order', 'personal', 'migration', 'auth', 'config'];
