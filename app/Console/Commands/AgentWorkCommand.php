@@ -14,6 +14,11 @@ class AgentWorkCommand extends Command
 
     public function handle(): int
     {
+        // 캐시는 메모리에만 둔다.
+        // 캐시 폴더는 웹(www-data)과 이 명령(ubuntu)이 함께 쓰는데, 한쪽이 만든 자리에
+        // 다른 쪽이 쓰지 못해 오류가 난다. Agent 는 한 번 돌고 끝나므로 캐시를 남길 까닭도 없다.
+        config(['cache.default' => 'array']);
+
         $result = (new AgentWorker())->run((int) $this->option('limit'));
 
         foreach ($result['글'] as $line) {
