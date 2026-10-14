@@ -242,7 +242,7 @@ TXT;
 
         $user .= "\n[파일 목록]\n".$this->fileIndex();
 
-        return $this->groundFiles($this->ask($system, $user, (string) Setting::get('agent_model'), 4000));
+        return $this->groundFiles($this->ask($system, $user, (string) Setting::get('agent_model'), 32000));
     }
 
     /**
@@ -272,7 +272,7 @@ TXT;
         // ① 어디를 뒤져야 하는지 찾을 말을 받는다
         $hits = [];
         try {
-            $locate = $this->ask($this->locateSystem(), $body."\n[파일 목록]\n".$this->fileIndex(), $model, 2000);
+            $locate = $this->ask($this->locateSystem(), $body."\n[파일 목록]\n".$this->fileIndex(), $model, 8000, 'low');
             $hits = $this->searchRepo((array) ($locate['keywords'] ?? []));
         } catch (Throwable $e) {
             report($e);   // 못 찾아도 ②는 파일 목록만으로 진행한다
@@ -282,7 +282,7 @@ TXT;
         $user = $body."\n[찾은 자리]\n".($hits ? $this->snippetText($hits) : '(찾지 못했습니다. 아래 목록에서 골라 주십시오.)')
             ."\n[파일 목록]\n".$this->fileIndex();
 
-        $analysis = $this->ask($this->planSystem(), $user, $model, 4000);
+        $analysis = $this->ask($this->planSystem(), $user, $model, 32000);
         $analysis['_tokens'] = (int) ($analysis['_tokens'] ?? 0) + (int) ($locate['_tokens'] ?? 0);
 
         return $this->groundFiles($analysis);
@@ -657,8 +657,7 @@ TXT;
 파일 이름, 줄 번호, 클래스 이름, 영어 기술 용어를 쓰지 마십시오.
 사람이 직접 쓴 것처럼 자연스러운 존댓말로 3~6문장.
 
-아래 형식의 JSON 한 덩이만 답하십시오.
-{"cause": "한 줄 요약", "answer": "답변 본문"}
+답변 본문만 쓰십시오. 머리말도, 따옴표도, 울타리도 붙이지 마십시오.
 TXT;
 
         $user = "[상태] {$state}\n\n"
@@ -667,9 +666,10 @@ TXT;
             .'[하려던 일 — 계획일 뿐, 다 됐다는 뜻이 아님]'."\n".($analysis['how'] ?? '-')."\n"
             .($already ? "\n이미 앞서 답변을 보냈습니다. 이어지는 안내로 쓰십시오.\n" : '');
 
+        // 답변은 글 한 덩이면 된다. JSON 으로 받으면 모델이 형식을 안 지킬 때
+        // 멀쩡한 답까지 버려진다. 깊이 생각할 자리도 아니라 얕게 부른다.
         try {
-            $res = $this->ask($system, $user, (string) Setting::get('agent_model'), 1500);
-            $text = trim((string) ($res['answer'] ?? ''));
+            $text = trim($this->askText($system, $user, (string) Setting::get('agent_model'), 8000, 'low'));
             if ($text !== '') {
                 return $text;
             }
@@ -683,8 +683,16 @@ TXT;
         return $draft."\n\n".$did;
     }
 
-    /** Claude 에게 묻는다 */
-    private function ask(string $system, string $user, string $model, int $maxTokens): array
+    /**
+     * 한 번 부르고 글과 끝난 까닭을 함께 돌려준다.
+     *
+     * 지금 쓰는 모델들은 "생각" 이 기본으로 켜져 있고, 그 생각도 max_tokens 를 함께 쓴다.
+     * 한도가 빠듯하면 생각만 하다 한도에 걸려 글이 빈 채로 돌아온다(망고샵에서 실제로 그랬다).
+     * 그래서 한도를 넉넉히 주고, 깊이 생각할 까닭이 없는 자리는 effort 를 낮춰 아껴 쓴다.
+     *
+     * @param  string|null  $effort  low|medium|high — 쓸 수 있는 모델에서만 보낸다
+     */
+    private function call(string $system, string $user, string $model, int $maxTokens, ?string $effort = null): array
     {
         $key = self::apiKey();
         if ($key === '') {
@@ -694,32 +702,67 @@ TXT;
             $model = 'claude-sonnet-5';
         }
 
-        $res = Http::withHeaders([
-            'x-api-key' => $key,
-            'anthropic-version' => '2023-06-01',
-            'content-type' => 'application/json',
-        ])->timeout(self::ANALYZE_TIMEOUT)->post(self::API_URL, [
+        $body = [
             'model' => $model,
             'max_tokens' => $maxTokens,
             'system' => $system,
             'messages' => [['role' => 'user', 'content' => $user]],
-        ]);
+        ];
+
+        // effort 는 모델을 가린다. 받지 않는 모델에 보내면 400 이 난다.
+        if ($effort && ! str_starts_with($model, 'claude-haiku-4-5')) {
+            $body['output_config'] = ['effort' => $effort];
+        }
+
+        $res = Http::withHeaders([
+            'x-api-key' => $key,
+            'anthropic-version' => '2023-06-01',
+            'content-type' => 'application/json',
+        ])->timeout(self::ANALYZE_TIMEOUT)->post(self::API_URL, $body);
 
         if (! $res->successful()) {
             throw new \RuntimeException('Claude 호출 실패 ('.$res->status().'): '.mb_substr($res->body(), 0, 300));
         }
 
         // 생각 블록이 먼저 올 수 있으므로 text 블록만 골라 잇는다
-        $text = collect($res->json('content') ?? [])
-            ->filter(fn ($c) => ($c['type'] ?? '') === 'text')
-            ->pluck('text')->implode("\n");
+        return [
+            'text' => collect($res->json('content') ?? [])
+                ->filter(fn ($c) => ($c['type'] ?? '') === 'text')
+                ->pluck('text')->implode("\n"),
+            'cut' => $res->json('stop_reason') === 'max_tokens',
+            'tokens' => (int) ($res->json('usage.input_tokens') ?? 0)
+                + (int) ($res->json('usage.output_tokens') ?? 0),
+        ];
+    }
+
+    /**
+     * 글만 받아 온다 — 형식을 정해 받을 까닭이 없는 자리에 쓴다.
+     *
+     * 답변 글처럼 받은 것을 그대로 쓰는 경우, 굳이 JSON 으로 감싸 받으면
+     * 모델이 형식을 안 지킬 때 멀쩡한 답까지 버리게 된다.
+     */
+    private function askText(string $system, string $user, string $model, int $maxTokens, ?string $effort = null): string
+    {
+        return $this->call($system, $user, $model, $maxTokens, $effort)['text'];
+    }
+
+    /** Claude 에게 묻고 JSON 한 덩이를 받아 온다 */
+    private function ask(string $system, string $user, string $model, int $maxTokens, ?string $effort = null): array
+    {
+        $out = $this->call($system, $user, $model, $maxTokens, $effort);
+        $text = $out['text'];
 
         $parsed = self::extractJson($text);
         if (! $parsed) {
-            throw new \RuntimeException('응답을 읽지 못했습니다: '.mb_substr($text, 0, 300));
+            // 손쓸 방법이 다르므로 세 갈래로 나눠 남긴다.
+            throw new \RuntimeException(match (true) {
+                $out['cut'] && trim($text) === '' => '생각만 하다 한도('.$maxTokens.')를 다 썼습니다. 글이 비어 돌아왔습니다.',
+                (bool) $out['cut'] => '답이 길이 한도('.$maxTokens.')에 걸려 끊겼습니다. 끝부분: '.mb_substr($text, -200),
+                default => '응답을 읽지 못했습니다: '.mb_substr($text, 0, 300),
+            });
         }
 
-        $parsed['_tokens'] = (int) ($res->json('usage.input_tokens') ?? 0) + (int) ($res->json('usage.output_tokens') ?? 0);
+        $parsed['_tokens'] = $out['tokens'];
 
         return $parsed;
     }
