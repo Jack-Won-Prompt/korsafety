@@ -34,11 +34,18 @@ class AgentFixer
     private const HEALTH_URL = 'https://korsafety.co.kr/';
 
     /** 손댈 수 있는 자리 */
-    private const ALLOW = ['app/', 'resources/views/', 'routes/', 'public/css/', 'public/js/', 'lang/'];
+    private const ALLOW = ['app/', 'resources/views/', 'routes/', 'public/css/', 'public/js/', 'lang/',
+        'database/migrations/'];
+
+    /** DB 를 바꾸기 전에 받아 두는 자리 — 되돌릴 수 없는 일에 대비하는 유일한 수단 */
+    private const BACKUP_DIR = '/home/ubuntu/db-backup/korsafety';
+
+    /** 남겨 둘 백업 개수 */
+    private const BACKUP_KEEP = 7;
 
     /** 어떤 경우에도 손대지 않는 자리 (소문자 비교, 부분 일치) */
     private const DENY = [
-        'database/migrations/', 'config/', '.env',
+        'config/', '.env',
         'app/services/agentfixer.php', 'app/services/agentworker.php', 'app/services/agentintake.php',
         'app/models/setting.php', 'app/models/agenttask.php',
         'app/http/controllers/api/paymentcontroller.php',
@@ -122,8 +129,24 @@ class AgentFixer
 
             // 2) 파일마다 고친 전문을 받는다 (조각 수정은 줄이 어긋나기 쉬워 전문으로 받는다)
             $touched = $notes = $done = [];
+
+            // 표 구조를 바꿔 달라는 건이면 새 마이그레이션을 한 장 만든다.
+            $migrationAdded = false;
+            $made = null;
+            if ($made = $this->newMigration($analysis, $task)) {
+                $touched[] = $made;
+                $migrationAdded = true;
+            }
+
             foreach ($files as $file) {
                 $path = self::WORK_DIR.'/'.$file;
+
+                // 이미 돌아간 마이그레이션은 고치지 않는다. 고쳐 봐야 실제 표는 그대로이고
+                // 기록과 어긋나기만 한다. 바꿀 것이 있으면 새 장을 쓴다.
+                if (str_starts_with($file, 'database/migrations/')) {
+                    $notes[] = "{$file}: 이미 있는 마이그레이션은 고치지 않는다";
+                    continue;
+                }
                 if (! is_file($path)) {
                     $notes[] = "{$file}: 파일 없음";
                     continue;
@@ -150,6 +173,7 @@ class AgentFixer
             }
 
             if (! $touched) {
+                $this->dropNewMigration($migrationAdded ? $made : null);
                 $this->revertWorkTree();
 
                 // 손댈 것이 없었던 까닭이 "이미 들어가 있어서" 라면 못 한 것이 아니라 끝난 것이다.
@@ -168,6 +192,10 @@ class AgentFixer
             if ($problem = $this->verify($touched, $isSr)) {
                 $retried = [];
                 foreach ($touched as $file) {
+                    // 새로 만든 마이그레이션은 되돌릴 옛 모습이 없어 이 길로 다룰 수 없다.
+                    if (str_starts_with($file, 'database/migrations/')) {
+                        continue;
+                    }
                     $path = self::WORK_DIR.'/'.$file;
                     $broken = (string) file_get_contents($path);
                     $this->git(['checkout', '--', $file]);
@@ -180,10 +208,14 @@ class AgentFixer
                 }
                 $again = $retried ? $this->verify($retried, $isSr) : '다시 고치지 못했습니다.';
                 if ($again) {
+                    $this->dropNewMigration($migrationAdded ? $made : null);
                     $this->revertWorkTree();
 
                     return $this->out(true, false, '검증에서 걸러져 되돌렸습니다: '.$again);
                 }
+                // 다시 받는 길에서는 마이그레이션을 손대지 않으므로, 여기까지 왔다면 접는다.
+                $this->dropNewMigration($migrationAdded ? $made : null);
+                $migrationAdded = false;
                 $touched = $retried;
             }
 
@@ -196,7 +228,7 @@ class AgentFixer
             }
 
             // 5) 운영 반영 후 상태 확인, 이상하면 즉시 되돌린다
-            $deployed = $this->deploy();
+            $deployed = $this->deploy($migrationAdded);
             if (! $deployed['ok']) {
                 $rolled = $this->rollback($commit, $deployed['reason']);
 
@@ -245,6 +277,204 @@ class AgentFixer
         }
 
         return null;
+    }
+
+    /**
+     * 표 구조를 바꾸는 새 마이그레이션을 한 장 만든다.
+     *
+     * 이미 있는 파일을 고치는 길과 섞지 않는다. 마이그레이션은 한 번 돌고 나면
+     * 그 내용이 아니라 "돌았다는 기록"이 사실이 되므로, 바꿀 것이 있으면 늘 새 장을 쓴다.
+     *
+     * @return string|null 만든 파일의 저장소 기준 경로, 만들지 않았으면 null
+     */
+    private function newMigration(array $analysis, AgentTask $task): ?string
+    {
+        $name = trim((string) ($analysis['new_migration'] ?? ''));
+        if ($name === '' || ! preg_match('/^[a-z][a-z0-9_]{3,80}$/', $name)) {
+            return null;
+        }
+
+        $rel = 'database/migrations/'.date('Y_m_d_His').'_'.$name.'.php';
+        $body = $this->askMigration($rel, $analysis, $task);
+        if ($body === '') {
+            return null;
+        }
+
+        // 돌릴 수 있는 모양인지, 되돌릴 길이 있는지만 본다.
+        // down() 이 비어 있으면 잘못됐을 때 표를 되돌릴 수 없다.
+        if (! str_contains($body, 'public function up(')
+            || ! preg_match('~public function down\(\)\s*:\s*void\s*\{(?!\s*\})~', $body)) {
+            Log::warning('Agent 마이그레이션에 되돌릴 길이 없다', ['파일' => $rel]);
+
+            return null;
+        }
+
+        $path = self::WORK_DIR.'/'.$rel;
+        if (! is_dir(dirname($path))) {
+            return null;
+        }
+        file_put_contents($path, $body);
+
+        $lint = Process::path(self::WORK_DIR)->timeout(60)->run(['php', '-l', $rel]);
+        if (! $lint->successful()) {
+            @unlink($path);
+            Log::warning('Agent 마이그레이션 문법 오류', ['파일' => $rel]);
+
+            return null;
+        }
+
+        // 저장소에 "이 파일을 더할 참이다" 라고 알려 둔다.
+        // 그래야 변경량 검사(git diff)에도 잡혀 검사를 건너뛴 채 올라가지 않는다.
+        Process::path(self::WORK_DIR)->timeout(60)->run(['git', 'add', '-N', $rel]);
+
+        return $rel;
+    }
+
+    /** 만들던 마이그레이션을 없던 일로 한다 */
+    private function dropNewMigration(?string $rel): void
+    {
+        if (! $rel) {
+            return;
+        }
+        Process::path(self::WORK_DIR)->timeout(60)->run(['git', 'reset', '--', $rel]);
+        @unlink(self::WORK_DIR.'/'.$rel);
+    }
+
+    /** 마이그레이션 전문을 받아 온다 */
+    private function askMigration(string $rel, array $analysis, AgentTask $task): string
+    {
+        $system = <<<'TXT'
+당신은 Laravel 쇼핑몰의 DB 표 구조를 바꾸는 마이그레이션을 쓰는 개발자입니다.
+받은 내용대로 마이그레이션 파일 전문을 돌려주십시오.
+
+지켜야 할 것
+ · Laravel 표준 형식(익명 클래스, up()/down())을 지키십시오.
+ · down() 을 반드시 채우십시오. 잘못됐을 때 표를 되돌릴 유일한 길입니다. 비워 두면 버려집니다.
+ · 한 번에 한 가지 일만 하십시오. 여러 표를 한꺼번에 뜯어고치지 마십시오.
+ · 컬럼을 더할 때는 nullable 로 두거나 기본값을 주십시오. 이미 들어 있는 줄이 있기 때문입니다.
+ · 자료를 옮기거나 지우는 문장(DELETE, TRUNCATE, UPDATE)은 쓰지 마십시오.
+ · 주석은 한국어로, 왜 그렇게 했는지를 적으십시오.
+ · 답은 파일 내용만 보내십시오. 설명도, ``` 울타리도 붙이지 마십시오.
+TXT;
+
+        $user = "만들 파일: {$rel}\n\n"
+            .'원인: '.($analysis['cause'] ?? '')."\n"
+            .'해야 할 일: '.($analysis['how'] ?? '')."\n";
+
+        $text = $this->callModel($system, $user, $task);
+        if (preg_match('~^```[a-z]*\n(.*)\n```\s*$~s', trim($text), $m)) {
+            $text = $m[1];
+        }
+        $text = trim($text);
+
+        return $text === '' ? '' : $text."\n";
+    }
+
+    /**
+     * DB 를 통째로 받아 둔다.
+     *
+     * 암호를 명령줄에 적으면 같은 기계의 다른 사람이 ps 로 들여다볼 수 있어,
+     * 권한을 막은 임시 설정 파일에 적어 넘긴다.
+     *
+     * @return string|null 받아 둔 파일 경로, 받지 못하면 null
+     */
+    private function backupDb(): ?string
+    {
+        if (! is_dir(self::BACKUP_DIR) && ! @mkdir(self::BACKUP_DIR, 0750, true)) {
+            return null;
+        }
+
+        $db = config('database.connections.'.config('database.default'));
+        if (! is_array($db) || ($db['database'] ?? '') === '') {
+            return null;
+        }
+
+        $cnf = tempnam(sys_get_temp_dir(), 'agentdb');
+        if (! $cnf) {
+            return null;
+        }
+        chmod($cnf, 0600);
+        file_put_contents($cnf, "[client]\nuser=".($db['username'] ?? '')
+            ."\npassword=\"".str_replace('"', '\"', (string) ($db['password'] ?? ''))
+            ."\"\nhost=".($db['host'] ?? '127.0.0.1')."\nport=".($db['port'] ?? 3306)."\n");
+
+        $file = self::BACKUP_DIR.'/'.date('Ymd_His').'.sql.gz';
+        $cmd = 'mysqldump --defaults-extra-file='.escapeshellarg($cnf)
+            .' --single-transaction --routines --triggers --no-tablespaces '
+            .escapeshellarg((string) $db['database'])
+            .' 2>/dev/null | gzip -c > '.escapeshellarg($file);
+
+        $res = Process::timeout(900)->run(['bash', '-c', $cmd]);
+        @unlink($cnf);
+
+        if (! $res->successful() || ! is_file($file) || filesize($file) < 1024) {
+            @unlink($file);
+            Log::error('Agent DB 받아두기 실패');
+
+            return null;
+        }
+
+        $this->pruneBackups();
+
+        return $file;
+    }
+
+    /**
+     * 모델에게 한 번 묻고 글만 받아 온다.
+     *
+     * 답이 길이 한도에 걸려 끊겼으면 빈 글을 돌려준다. 끊긴 마이그레이션을 돌리면
+     * 표가 반만 바뀐 채 남으므로, 반쪽짜리를 쓰느니 아무것도 하지 않는 편이 낫다.
+     */
+    private function callModel(string $system, string $user, AgentTask $task): string
+    {
+        $key = AgentWorker::apiKey();
+        // get() 은 값을 배열로도 돌려준다. 설정값 하나를 글자로 쓸 때는 scalar() 를 쓴다.
+        $model = (string) \App\Models\Setting::get('agent_model_fix');
+        if (! in_array($model, AgentWorker::MODELS, true)) {
+            $model = 'claude-opus-5';
+        }
+
+        $res = Http::withHeaders([
+            'x-api-key' => $key,
+            'anthropic-version' => '2023-06-01',
+            'content-type' => 'application/json',
+        ])->timeout(self::FIX_TIMEOUT)->post(self::API_URL, [
+            'model' => $model,
+            'max_tokens' => self::REWRITE_MAX_TOKENS,
+            'system' => $system,
+            'messages' => [['role' => 'user', 'content' => $user]],
+        ]);
+
+        if (! $res->successful()) {
+            throw new \RuntimeException('모델 호출 실패 ('.$res->status().')');
+        }
+        if ($res->json('stop_reason') === 'max_tokens') {
+            Log::warning('Agent 답이 잘려 버렸다');
+
+            return '';
+        }
+
+        $task->tokens = (int) $task->tokens
+            + (int) ($res->json('usage.input_tokens') ?? 0)
+            + (int) ($res->json('usage.output_tokens') ?? 0);
+
+        // 생각 블록이 먼저 올 수 있으므로 text 블록만 골라 잇는다
+        return collect($res->json('content') ?? [])
+            ->filter(fn ($c) => ($c['type'] ?? '') === 'text')
+            ->pluck('text')->implode("\n");
+    }
+
+    /** 오래된 백업을 솎아 낸다 */
+    private function pruneBackups(): void
+    {
+        $files = glob(self::BACKUP_DIR.'/*.sql.gz') ?: [];
+        if (count($files) <= self::BACKUP_KEEP) {
+            return;
+        }
+        sort($files);
+        foreach (array_slice($files, 0, count($files) - self::BACKUP_KEEP) as $old) {
+            @unlink($old);
+        }
     }
 
     /** 저장소 기준 경로로 다듬는다 */
@@ -626,8 +856,9 @@ TXT;
     }
 
     /** 운영 폴더에 반영하고 사이트가 정상인지 확인한다 */
-    private function deploy(): array
+    private function deploy(bool $withMigration = false): array
     {
+        $backup = null;
         $pull = Process::path(self::LIVE_DIR)->timeout(300)->run('git pull --ff-only origin main 2>&1');
         if (! $pull->successful()) {
             return ['ok' => false, 'reason' => '운영 폴더 반영 실패'];
@@ -639,13 +870,36 @@ TXT;
             return ['ok' => false, 'reason' => '캐시 재생성 실패'];
         }
 
+        // 표 구조가 바뀌는 건이면 받아 둔 다음에 돌린다.
+        // 받아 두지 못하면 돌리지 않는다 — 되돌릴 수 없는 일을 대비 없이 하지 않는다.
+        if ($withMigration) {
+            $backup = $this->backupDb();
+            if (! $backup) {
+                return ['ok' => false, 'reason' => 'DB 를 받아 두지 못해 표 구조를 바꾸지 않았습니다'];
+            }
+            $run = Process::path(self::LIVE_DIR)->timeout(900)->run('php artisan migrate --force 2>&1');
+            if (! $run->successful()) {
+                return ['ok' => false, 'backup' => $backup,
+                    'reason' => '표 구조 변경 실패 — '.mb_substr(trim($run->output()), 0, 200)];
+            }
+            Log::warning('Agent 가 표 구조를 바꿨다', ['받아둔 자리' => $backup]);
+        }
+
         $check = Process::timeout(60)->run('curl -s -o /dev/null -w "%{http_code}" '.escapeshellarg(self::HEALTH_URL));
         $code = (int) trim($check->output());
         if ($code !== 200) {
-            return ['ok' => false, 'reason' => "쇼핑몰 응답 {$code}"];
+            // 표를 이미 바꾼 뒤라면 그것부터 되돌린다. 코드만 되돌리면 표와 어긋난다.
+            if ($withMigration) {
+                $back = Process::path(self::LIVE_DIR)->timeout(900)
+                    ->run('php artisan migrate:rollback --step=1 --force 2>&1');
+                Log::warning('Agent 표 구조 되돌림', ['성공' => $back->successful(), '받아둔 자리' => $backup]);
+            }
+
+            return ['ok' => false, 'backup' => $backup, 'reason' => "쇼핑몰 응답 {$code}"
+                .($backup ? " (받아 둔 자리: {$backup})" : '')];
         }
 
-        return ['ok' => true, 'reason' => ''];
+        return ['ok' => true, 'backup' => $backup, 'reason' => ''];
     }
 
     /** 올린 커밋을 되돌리고 운영까지 복구한다 */
