@@ -79,6 +79,8 @@ class AgentWorker
             return ['처리' => 0, '건너뜀' => 0, '글' => ["오늘 처리 상한({$dailyLimit}건)에 도달해 쉬어 갑니다."]];
         }
 
+        $this->reclaimStuck();
+
         $done = $skipped = 0;
         $seen = [];
 
@@ -119,6 +121,34 @@ class AgentWorker
         }
 
         return ['처리' => $done, '건너뜀' => $skipped, '글' => $log];
+    }
+
+    /**
+     * 돌다 만 일감을 다시 대기로 돌린다.
+     *
+     * 일감을 집으면 먼저 '처리중' 으로 바꿔 두는데, 그 뒤에 프로세스가 죽으면
+     * 그 표시가 그대로 남는다. 대기 줄에서는 '대기' 만 집어 가므로 아무도 다시 잡지 않고,
+     * 요청은 조용히 멈춘 채 남는다. 실제로 그렇게 갇힌 건이 있었다.
+     *
+     * 한참 지나도록 끝나지 않은 것은 죽은 것으로 보고 되돌린다.
+     * 아직 도는 중인 것을 건드리지 않도록 넉넉히 기다린다.
+     */
+    private function reclaimStuck(int $minutes = 30): void
+    {
+        $stuck = AgentTask::where('status', 'working')
+            ->where('started_at', '<', now()->subMinutes($minutes))
+            ->get();
+
+        foreach ($stuck as $task) {
+            $task->update([
+                'status' => $task->attempts >= 3 ? 'failed' : 'pending',
+                'result' => trim((string) $task->result."\n[되찾음] 처리 도중 멈춰 있어 다시 대기로 돌렸습니다."),
+            ]);
+            try {
+                Log::warning('Agent 돌다 만 일감을 되찾았다', ['작업' => $task->id, '시도' => $task->attempts]);
+            } catch (Throwable $ignored) {
+            }
+        }
     }
 
     /** 일감 하나를 처리한다 */
