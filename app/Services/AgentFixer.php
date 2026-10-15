@@ -6,6 +6,7 @@ use App\Models\AgentTask;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -477,6 +478,88 @@ TXT;
         }
     }
 
+    /**
+     * 표에 더한 칸이 그 표를 쓰는 모델에도 적혀 있는지 본다.
+     *
+     * Laravel 은 모델의 $fillable 에 없는 칸을 저장할 때 조용히 버린다. 오류도 나지 않는다.
+     * 그래서 표와 화면과 컨트롤러를 다 고쳐 놓고 모델 한 줄을 빠뜨리면,
+     * 입력칸은 보이고 "저장되었습니다" 도 뜨는데 값만 사라진다.
+     * 실제로 옵션 가격을 더하면서 그렇게 된 적이 있다. 사람이 직접 넣어 보기 전에는 몰랐다.
+     *
+     * @return string|null 멀쩡하면 null, 빠진 것이 있으면 사유
+     */
+    private function missingFillable(string $migrationRel): ?string
+    {
+        $body = (string) @file_get_contents(self::WORK_DIR.'/'.$migrationRel);
+        if ($body === '') {
+            return null;
+        }
+
+        // 새로 만드는 표는 볼 것이 없다. 이미 있는 표에 더하는 경우만 본다.
+        if (! preg_match_all("~Schema::table\(\s*'([a-z0-9_]+)'~i", $body, $m)) {
+            return null;
+        }
+
+        // 칸을 더하는 호출만 고른다. 인덱스나 제약은 칸이 아니다.
+        $notColumn = ['index', 'unique', 'primary', 'foreign', 'dropColumn', 'dropIndex',
+            'dropUnique', 'dropForeign', 'dropPrimary', 'renameColumn', 'spatialIndex', 'fulltext'];
+
+        foreach (array_unique($m[1]) as $table) {
+            $model = $this->modelFor($table);
+            if (! $model) {
+                continue;   // 모델이 없는 표도 있다 (중간 표 등)
+            }
+            $modelBody = (string) @file_get_contents(self::WORK_DIR.'/'.$model);
+            if (! preg_match('~\$fillable\s*=\s*\[(.*?)\]~s', $modelBody, $fm)) {
+                continue;   // $fillable 을 안 쓰는 모델이면 버리지 않는다
+            }
+            $fillable = $fm[1];
+
+            preg_match_all("~\\\$table->([a-zA-Z]+)\(\s*'([a-z0-9_]+)'~", $body, $cm, PREG_SET_ORDER);
+            $missing = [];
+            foreach ($cm as $call) {
+                [, $method, $column] = $call;
+                if (in_array($method, $notColumn, true)) {
+                    continue;
+                }
+                if (! str_contains($fillable, "'{$column}'")) {
+                    $missing[] = $column;
+                }
+            }
+
+            if ($missing) {
+                return '표에 더한 칸이 모델에 적혀 있지 않습니다 — '
+                    .$model.' 의 $fillable 에 '.implode(', ', array_unique($missing))
+                    .' 을(를) 넣어야 저장됩니다.';
+            }
+        }
+
+        return null;
+    }
+
+    /** 표 이름으로 그 표를 쓰는 모델 파일을 찾는다 */
+    private function modelFor(string $table): ?string
+    {
+        foreach (glob(self::WORK_DIR.'/app/Models/*.php') ?: [] as $path) {
+            $rel = 'app/Models/'.basename($path);
+            $body = (string) @file_get_contents($path);
+
+            // 표 이름을 직접 적어 둔 모델이 가장 확실하다
+            if (preg_match("~\\\$table\s*=\s*'".preg_quote($table, '~')."'~", $body)) {
+                return $rel;
+            }
+
+            // 적어 두지 않았으면 Laravel 이 쓰는 규칙(StudlyCase 단수 → snake 복수)으로 맞춰 본다
+            $class = basename($path, '.php');
+            $guess = Str::snake(Str::pluralStudly($class));
+            if ($guess === $table && ! preg_match('~\$table\s*=~', $body)) {
+                return $rel;
+            }
+        }
+
+        return null;
+    }
+
     /** 저장소 기준 경로로 다듬는다 */
     public function normalizePath(string $raw): string
     {
@@ -736,6 +819,16 @@ TXT;
             $lint = Process::path(self::WORK_DIR)->timeout(60)->run(['php', '-l', $file]);
             if (! $lint->successful()) {
                 return "문법 오류 ({$file}) — ".mb_substr(trim($lint->output().$lint->errorOutput()), 0, 200);
+            }
+        }
+
+        // 1-2) 표에 더한 칸이 모델에도 적혀 있는지 본다
+        foreach ($files as $file) {
+            if (! str_starts_with($file, 'database/migrations/')) {
+                continue;
+            }
+            if ($problem = $this->missingFillable($file)) {
+                return $problem;
             }
         }
 
