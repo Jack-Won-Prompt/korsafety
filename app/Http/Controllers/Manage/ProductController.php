@@ -374,6 +374,8 @@ class ProductController extends Controller
             $copy->options()->create([
                 'group_name' => $option->group_name, 'name' => $option->name,
                 'extra_price' => $option->extra_price, 'stock' => $option->stock,
+                // 옵션별 일반판매가·협력사가도 함께 복제해야 복사본 가격이 비지 않는다
+                'price' => $option->price, 'partner_price' => $option->partner_price,
                 'is_active' => $option->is_active, 'sort' => $option->sort,
             ]);
         }
@@ -674,6 +676,9 @@ class ProductController extends Controller
             'options.*.name' => 'nullable|string|max:120',
             'options.*.group_name' => 'nullable|string|max:60',
             'options.*.extra_price' => 'nullable|integer|min:-10000000|max:10000000',
+            // 옵션마다 일반판매가·협력사가를 따로 받는다 (비우면 상품 가격을 따름)
+            'options.*.price' => 'nullable|integer|min:0|max:100000000',
+            'options.*.partner_price' => 'nullable|integer|min:0|max:100000000',
             'options.*.stock' => 'nullable|integer|min:0|max:999999',
         ], [
             'product_code.unique' => '이미 사용 중인 상품코드입니다. 다른 값을 입력해 주세요.',
@@ -784,6 +789,9 @@ class ProductController extends Controller
                 'group_name' => trim((string) ($row['group_name'] ?? '')) ?: null,
                 'name' => mb_substr($name, 0, 120),
                 'extra_price' => (int) ($row['extra_price'] ?? 0),
+                // 빈 칸은 0이 아니라 null로 둬야 '가격 미지정(상품가 사용)'과 구분된다
+                'price' => trim((string) ($row['price'] ?? '')) === '' ? null : max(0, (int) $row['price']),
+                'partner_price' => trim((string) ($row['partner_price'] ?? '')) === '' ? null : max(0, (int) $row['partner_price']),
                 'stock' => max(0, (int) ($row['stock'] ?? 0)),
                 'is_active' => ! empty($row['is_active']),
                 'sort' => $sort++,

@@ -259,6 +259,9 @@
                     <th style="width:170px">옵션 구분</th>
                     <th>선택지 <span class="req">*</span></th>
                     <th style="width:140px">추가 금액</th>
+                    {{-- 옵션마다 별도 단가를 매길 수 있도록 일반판매가·협력사가 칸을 추가한다 --}}
+                    <th style="width:130px">일반판매가</th>
+                    <th style="width:130px">협력사가</th>
                     <th style="width:110px">재고</th>
                     <th style="width:80px">사용</th>
                     <th style="width:70px">삭제</th>
@@ -267,12 +270,17 @@
                     @foreach(old('options', $editing ? $product->options->map(fn($o) => [
                         'id' => $o->id, 'group_name' => $o->group_name, 'name' => $o->name,
                         'extra_price' => $o->extra_price, 'stock' => $o->stock, 'is_active' => $o->is_active ? 1 : 0,
+                        // 수정 화면에서 저장된 옵션별 단가를 다시 보여 주기 위해 함께 내려 준다
+                        'price' => $o->price, 'partner_price' => $o->partner_price,
                     ])->all() : []) as $i => $row)
                         <tr>
                             <td><input type="hidden" name="options[{{ $i }}][id]" value="{{ $row['id'] ?? '' }}">
                                 <input class="input" style="height:36px" name="options[{{ $i }}][group_name]" value="{{ $row['group_name'] ?? '' }}" placeholder="예) 사이즈"></td>
                             <td><input class="input" style="height:36px" name="options[{{ $i }}][name]" value="{{ $row['name'] ?? '' }}" placeholder="예) 260mm"></td>
                             <td><input class="input" style="height:36px;text-align:right" type="number" name="options[{{ $i }}][extra_price]" value="{{ $row['extra_price'] ?? 0 }}"></td>
+                            {{-- 비워 두면 상품 가격을 그대로 쓰므로 기본값을 넣지 않는다 --}}
+                            <td><input class="input" style="height:36px;text-align:right" type="number" min="0" name="options[{{ $i }}][price]" value="{{ $row['price'] ?? '' }}" placeholder="미입력 시 상품가"></td>
+                            <td><input class="input" style="height:36px;text-align:right" type="number" min="0" name="options[{{ $i }}][partner_price]" value="{{ $row['partner_price'] ?? '' }}" placeholder="미입력 시 상품가"></td>
                             <td><input class="input" style="height:36px;text-align:right" type="number" min="0" name="options[{{ $i }}][stock]" value="{{ $row['stock'] ?? 0 }}"></td>
                             <td style="text-align:center"><input type="checkbox" name="options[{{ $i }}][is_active]" value="1" {{ ($row['is_active'] ?? 1) ? 'checked' : '' }}></td>
                             <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove()">삭제</button></td>
@@ -282,6 +290,7 @@
             </table>
             <div class="hint" style="margin-top:10px">
                 추가 금액은 판매가에 더해집니다(할인가가 있으면 할인가 기준). 음수도 넣을 수 있습니다.<br>
+                일반판매가·협력사가는 옵션마다 단가를 따로 매길 때만 입력합니다. 비워 두면 상품에 입력한 가격이 그대로 적용됩니다.<br>
                 옵션 구분이 같은 선택지끼리 하나의 선택 상자로 묶입니다. 비워 두면 ‘옵션’으로 표시됩니다.
             </div>
         </div>
@@ -515,6 +524,9 @@ document.addEventListener('DOMContentLoaded', function () {
             '<input class="input" style="height:36px" name="options['+i+'][group_name]" placeholder="예) 사이즈"></td>' +
             '<td><input class="input" style="height:36px" name="options['+i+'][name]" placeholder="예) 260mm"></td>' +
             '<td><input class="input" style="height:36px;text-align:right" type="number" name="options['+i+'][extra_price]" value="0"></td>' +
+            // 옵션별 단가는 비워 두면 상품 가격을 쓰도록 기본값 없이 둔다
+            '<td><input class="input" style="height:36px;text-align:right" type="number" min="0" name="options['+i+'][price]" placeholder="미입력 시 상품가"></td>' +
+            '<td><input class="input" style="height:36px;text-align:right" type="number" min="0" name="options['+i+'][partner_price]" placeholder="미입력 시 상품가"></td>' +
             '<td><input class="input" style="height:36px;text-align:right" type="number" min="0" name="options['+i+'][stock]" value="0"></td>' +
             '<td style="text-align:center"><input type="checkbox" name="options['+i+'][is_active]" value="1" checked></td>' +
             '<td><button type="button" class="btn btn-sm btn-danger">삭제</button></td>';
